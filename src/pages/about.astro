@@ -1,0 +1,18 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../lib/site';
+---
+<Base title="About" description={`Who makes ${SITE.name} and why.`}>
+  <section class="page-head wrap">
+    <h1 data-rise>About {SITE.name}</h1>
+    <p data-rise style="--i:1">A small library of animation styles, each one made from scratch, given away free.</p>
+  </section>
+  <section class="prose wrap">
+    <h2>Why it exists</h2>
+    <p>Good motion graphics take days in an editor. Claude can draw a whole animation in code, with its own sound, in minutes, if it has a strong example to follow. Each style here is that example: a complete, working animation plus the rules for rebuilding it around your topic.</p>
+    <h2>Who makes it</h2>
+    <p>{SITE.name} is made by Rohan. Every style is original: designed, drawn and sound-designed in code for this library.</p>
+    <h2>Get in touch</h2>
+    <p>Ideas for a style, a bug, or a video you made with one? Write to <a href={`mailto:${SITE.contact}`}>{SITE.contact}</a>.</p>
+  </section>
+</Base>

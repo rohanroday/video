@@ -1,0 +1,105 @@
+---
+import Base from '../../layouts/Base.astro';
+import PromptBuilder from '../../components/PromptBuilder';
+import { STYLES, frameUrl, type Style } from '../../data/styles';
+
+export function getStaticPaths() {
+  return STYLES.map((style) => ({ params: { id: style.id }, props: { style } }));
+}
+const { style } = Astro.props as { style: Style };
+const base = `/styles/${style.id}`;
+---
+<Base title={style.name} description={style.tagline} image={`${base}/media/poster.jpg`}>
+  <section class="intro wrap" aria-labelledby="style-title">
+    <div>
+      <h1 id="style-title" data-rise>{style.name}</h1>
+      <p class="tagline" data-rise style="--i:1">{style.tagline}</p>
+    </div>
+    <dl class="facts small" data-rise style="--i:2">
+      <div><dt class="muted">Family</dt><dd>{style.family}</dd></div>
+      <div><dt class="muted">Demo length</dt><dd>{style.duration} seconds</dd></div>
+      <div><dt class="muted">Type</dt><dd>{style.fonts.join(', ')}</dd></div>
+      <div><dt class="muted">Sound</dt><dd>Synthesized in code</dd></div>
+    </dl>
+  </section>
+
+  <section class="player wrap" aria-label={`${style.name} sample`}>
+    <video src={`${base}/media/sample.mp4`} poster={`${base}/media/poster.jpg`} width="1280" height="720" controls playsinline preload="metadata"></video>
+    <p class="small muted">Sound on. Or <a href={`${base}/reference.html`} target="_blank" rel="noopener">play the live version</a>, drawn frame by frame in your browser.</p>
+  </section>
+
+  <section class="sheet wrap" aria-labelledby="sheet-title">
+    <h2 id="sheet-title" class="sheet-title">Every frame</h2>
+    <div class="sheet-grid">
+      {Array.from({ length: style.frames }, (_, i) => <img src={frameUrl(style, i)} width="960" height="540" alt="" loading="lazy" data-rise style={`--i:${i % 10}`} />)}
+    </div>
+  </section>
+
+  <section class="about-style wrap" aria-labelledby="look-title">
+    <div data-rise>
+      <h2 id="look-title">The look</h2>
+      <p>{style.look}</p>
+    </div>
+    <div data-rise style="--i:1">
+      <h2>How it tells a story</h2>
+      <p>{style.howItExplains}</p>
+    </div>
+    <div data-rise style="--i:2">
+      <h2>Good for</h2>
+      <ul>{style.bestFor.map((b) => <li>{b}</li>)}</ul>
+      <div class="swatches" aria-label="Palette">{style.palette.map((c) => <span style={`background:${c}`} title={c}></span>)}</div>
+    </div>
+  </section>
+
+  <section id="prompt" class="make wrap" aria-labelledby="make-title">
+    <h2 id="make-title" data-rise>Make it yours</h2>
+    <p class="make-lede" data-rise style="--i:1">Type what your video is about, choose the voiceover mode, and copy one prompt into a new Claude chat.</p>
+    <PromptBuilder client:visible styleId={style.id} styleName={style.name} />
+  </section>
+
+  <section class="steps wrap" aria-labelledby="steps-title">
+    <h2 id="steps-title" data-rise>After you paste it</h2>
+    <ol>
+      <li data-rise>Claude reads the style and writes a storyboard: one still for every beat, with the words and sounds listed underneath.</li>
+      <li data-rise style="--i:1">You approve it or ask for changes in plain words.</li>
+      <li data-rise style="--i:2">Claude builds the full animation. It plays in the chat with its sound.</li>
+      <li data-rise style="--i:3">For an MP4, run the same prompt in Claude Code, which renders every frame and the sound into a video file.</li>
+    </ol>
+  </section>
+</Base>
+
+<style>
+  .intro { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 40px; padding-top: 6vh; }
+  .intro h1 { font-size: var(--t-display); letter-spacing: -0.045em; line-height: .9; }
+  .tagline { margin-top: 24px; font-size: var(--t-h3); max-width: 34ch; line-height: 1.35; }
+  .facts { display: grid; grid-template-columns: auto auto; gap: 10px 28px; margin: 0; }
+  .facts div { display: contents; }
+  .facts dd { margin: 0; }
+  @media (max-width: 760px) { .intro { grid-template-columns: 1fr; } }
+
+  .player { margin-top: 56px; }
+  .player video { width: 100%; height: auto; background: #000; }
+  .player p { margin-top: 12px; }
+
+  .sheet { margin-top: var(--gap-section); }
+  .sheet-title { font-size: var(--t-h3); margin-bottom: 20px; }
+  .sheet-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sheet-grid img { height: 112px; width: auto; aspect-ratio: 16 / 9; object-fit: cover; transition: transform .25s var(--ease); }
+  .sheet-grid img:hover { transform: scale(1.06); }
+  @media (max-width: 760px) { .sheet-grid img { height: 72px; } }
+
+  .about-style { display: grid; grid-template-columns: 5fr 5fr 3fr; gap: 56px; margin-top: var(--gap-section); }
+  .about-style h2 { font-size: var(--t-h3); margin-bottom: 14px; }
+  .about-style ul { margin: 0; padding-left: 1.1em; }
+  .swatches { display: flex; margin-top: 24px; }
+  .swatches span { width: 36px; height: 36px; }
+  @media (max-width: 900px) { .about-style { grid-template-columns: 1fr; gap: 40px; } }
+
+  .make { margin-top: var(--gap-section); background: var(--surface); padding-block: 72px; }
+  .make-lede { margin: 18px 0 36px; max-width: 46ch; font-size: var(--t-h3); line-height: 1.35; }
+
+  .steps { margin-top: var(--gap-section); display: grid; grid-template-columns: 3fr 1fr 8fr; }
+  .steps h2 { font-size: var(--t-h2); }
+  .steps ol { grid-column: 3; margin: 0; padding-left: 1.2em; display: grid; gap: 16px; max-width: 60ch; }
+  @media (max-width: 900px) { .steps { grid-template-columns: 1fr; gap: 24px; } .steps ol { grid-column: 1; } }
+</style>

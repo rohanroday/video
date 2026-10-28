@@ -1,0 +1,58 @@
+---
+import '@fontsource-variable/bricolage-grotesque';
+import '@fontsource/dm-sans/400.css';
+import '@fontsource/dm-sans/500.css';
+import '@fontsource/dm-sans/700.css';
+import '../css/global.css';
+import { SITE } from '../lib/site';
+
+interface Props { title?: string; description?: string; image?: string }
+const { title, description = SITE.description, image = '/styles/paper-cut/media/poster.jpg' } = Astro.props;
+const fullTitle = title ? `${title} · ${SITE.name}` : `${SITE.name}: free animation styles for Claude`;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={image} />
+    <meta name="theme-color" content="#1b1a1f" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script is:inline>document.documentElement.classList.add('js');</script>
+  </head>
+  <body>
+    <header class="bar">
+      <a class="wordmark" href="/">{SITE.name}</a>
+      <nav aria-label="Main">
+        <a class="hide-sm" href="/#styles">Styles</a>
+        <a class="hide-sm" href="/#how">How it works</a>
+        <a class="hide-xs" href="/make-your-own">Make your own</a>
+        <a class="hide-sm" href="/#faq">Questions</a>
+        <a class="btn" href="/styles/paper-cut">Open Paper Cut</a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="foot">
+      <span>Animation styles you run in Claude.</span>
+      <nav aria-label="Footer">
+        <a href="/#styles">Styles</a>
+        <a href="/make-your-own">Make your own</a>
+        <a href="/about">About</a>
+        <a href="/license">License</a>
+      </nav>
+      <span class="end">© {SITE.year} {SITE.name} · <a href="/privacy">Privacy</a></span>
+    </footer>
+    <script>
+      // section entrances: each [data-rise] gets .in once it scrolls into view
+      const items = document.querySelectorAll<HTMLElement>('[data-rise]');
+      const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+      items.forEach((el) => io.observe(el));
+    </script>
+  </body>
+</html>

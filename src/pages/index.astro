@@ -1,0 +1,233 @@
+---
+import Base from '../layouts/Base.astro';
+import { STYLES, frameUrl } from '../data/styles';
+import { SITE } from '../lib/site';
+
+const style = STYLES[0];
+const strip = [1, 4, 6, 8, 11, 'video', 13, 16, 18, 21, 24, 26, 28] as const;
+const stripNames: Record<number, string> = { 1: 'Hills slide up', 4: 'Title strip', 6: 'Let the light in', 8: 'The window lights', 11: 'Notebook sheet', 13: 'The glass fills', 16: 'Sheet tears away', 18: 'Sunburst', 21: 'Clock sweep', 24: 'Hopping sneaker', 26: 'Small steps', 28: 'The stamp' };
+const steps = [
+  { title: 'Pick a style', text: 'Watch the samples and choose the look that suits your idea. Paper Cut is the first.', frame: 4, pos: '30% 50%', space: 120 },
+  { title: 'Type your topic', text: 'A topic, a few bullet points or your whole script. Add a voiceover if you have one.', frame: 6, pos: '20% 50%', space: 80 },
+  { title: 'Copy one prompt', text: 'One click copies the style rules, your topic and the complete animation code.', frame: 13, pos: '65% 50%', space: 140 },
+  { title: 'Paste it into Claude', text: 'Open a new chat, paste and send. Claude rebuilds the style around your content.', frame: 11, pos: '30% 50%', space: 96 },
+  { title: 'Approve the storyboard', text: 'Claude shows still frames of every beat first, so you can change words before anything is built.', frame: 16, pos: '50% 50%', space: 128 },
+  { title: 'Watch it, export it', text: 'It plays in your browser with its sound. With Claude Code, it renders to an MP4.', frame: 28, pos: '80% 60%', space: 88 },
+];
+const faq = [
+  ['What is this?', `${SITE.name} is a free library of animation styles. Each one is a complete animation drawn in code, with its own synthesized sound, plus the rules for rebuilding it around any topic.`],
+  ['What do I need?', 'A Claude account. The prompt is long (about 60 KB), so a paid plan handles it most reliably; on a free plan, keep your topic short.'],
+  ['Does it cost anything?', 'No. The styles and prompts are free, and there is nothing to sign up for.'],
+  ['How do I get an MP4?', 'In a Claude chat the animation plays as a page in your browser, sound included. To save it as an MP4, run the same prompt in Claude Code: the prompt carries the render steps.'],
+  ['Can I use my own voiceover?', 'Yes. Choose "With voiceover" before you copy, then attach your recording in Claude. Every word on screen is timed to when you say it.'],
+  ['Can I use the videos commercially?', 'Yes. What you make is yours: post it, sell it, put it in ads. Please don\'t resell or republish the prompts themselves as a pack.'],
+  ['Does it work in other languages?', 'Write your topic in any language. The Paper Cut fonts cover Latin scripts; for others, ask Claude to switch to a font that supports yours.'],
+  ['Is what I type sent anywhere?', 'No. The prompt is assembled in your browser, and your topic never reaches our server.'],
+  ['What if the result looks wrong?', 'Tell Claude what to change, in plain words. The storyboard step catches most problems before the full build.'],
+  ['Can I make my own style?', 'Yes. "Make your own" gives you a prompt that turns one to three screenshots of a look you like into a new style.'],
+];
+---
+<Base>
+  <!-- first screen: a lit strip of frames, the moving sample at its centre -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="strip" data-strip tabindex="0" aria-label="Frames from the Paper Cut style">
+      {strip.map((f) => f === 'video'
+        ? <figure class="frame" data-start><video src={`/styles/${style.id}/media/sample.mp4`} poster={`/styles/${style.id}/media/poster.jpg`} width="1280" height="720" autoplay muted loop playsinline aria-label="Paper Cut sample animation, playing" /></figure>
+        : <figure class="frame"><img src={frameUrl(style, f)} width="960" height="540" alt={`Paper Cut frame: ${stripNames[f]}`} loading={Math.abs(strip.indexOf(f) - 5) > 3 ? 'lazy' : 'eager'} /></figure>)}
+    </div>
+    <div class="hero-foot wrap">
+      <h1 id="hero-title">Animation styles for Claude</h1>
+      <div class="hero-act">
+        <p class="lede">Pick a style, type your topic, copy one prompt. Claude builds the whole animation, sound included. Free.</p>
+        <a class="btn" href={`/styles/${style.id}`}>Try {style.name}</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- the styles: a run of frames, one lifted -->
+  <section id="styles" class="run-section wrap" aria-labelledby="styles-title">
+    <div class="run-side">
+      <h2 id="styles-title" data-rise>{style.name}</h2>
+      <a href={`/styles/${style.id}`} data-rise style="--i:1">Open the style</a>
+      <p class="note" data-rise style="--i:2">{style.tagline}</p>
+      <p class="note muted" data-rise style="--i:3">The first style in the library. New ones arrive every month, each one original.</p>
+    </div>
+    <div class="run">
+      {[style.highlights[0], style.highlights[5], style.highlights[2], style.highlights[4]].map((h, i) => (
+        <figure class={`run-frame${i === 1 ? ' lifted' : ''}`} data-rise style={`--i:${i}`}>
+          <img src={frameUrl(style, h.frame)} width="960" height="540" alt={`Paper Cut: ${h.name}`} loading="lazy" />
+          <figcaption><span>{h.name}</span><span class="muted">{h.fact}</span></figcaption>
+        </figure>
+      ))}
+    </div>
+  </section>
+
+  <!-- how it works: a row of moments you drag sideways, on a kraft field -->
+  <section id="how" class="how" aria-labelledby="how-title">
+    <div class="how-top wrap">
+      <h2 id="how-title" data-rise>From topic to video</h2>
+      <div class="how-buttons">
+        <button type="button" class="square" data-step="-1" aria-label="Back">←</button>
+        <button type="button" class="square" data-step="1" aria-label="Forward">→</button>
+      </div>
+    </div>
+    <div class="progress wrap" aria-hidden="true"><span data-progress></span></div>
+    <ol class="moments" data-moments>
+      {steps.map((s, i) => (
+        <li class="moment" data-rise style={`--i:${i}`}>
+          <h3>{s.title}</h3>
+          <p>{s.text}</p>
+          <div style={`height:${s.space}px`} aria-hidden="true"></div>
+          <img src={frameUrl(style, s.frame)} width="960" height="540" alt="" loading="lazy" style={`object-position:${s.pos}`} />
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <!-- every frame: small portrait crops, wide space -->
+  <section class="frames" aria-labelledby="frames-title">
+    <h2 id="frames-title" class="frames-title wrap">Every frame <span class="muted">{style.frames}</span></h2>
+    <div class="frames-row" data-frames tabindex="0" aria-label={`All ${style.frames} frames of Paper Cut`}>
+      {Array.from({ length: style.frames }, (_, i) => (
+        <img src={frameUrl(style, i)} width="960" height="540" alt="" loading="lazy" style={`object-position:${[50, 30, 70, 40, 60][i % 5]}% 50%`} />
+      ))}
+    </div>
+  </section>
+
+  <!-- questions, set as reading text -->
+  <section id="faq" class="faq wrap" aria-labelledby="faq-title">
+    <h2 id="faq-title" data-rise>Questions</h2>
+    <div class="faq-text">
+      {faq.map(([q, a], i) => <p data-rise style={`--i:${i % 4}`}><strong>{q}</strong> {a}</p>)}
+    </div>
+  </section>
+
+  <section class="cta wrap" aria-labelledby="cta-title">
+    <div class="cta-text">
+      <h2 id="cta-title" data-rise>Start with one line</h2>
+      <p data-rise style="--i:1">Pick the style, write one line about your idea, and let Claude do the cutting.</p>
+      <a class="btn" href={`/styles/${style.id}`} data-rise style="--i:2">Open {style.name}</a>
+    </div>
+    <img src={frameUrl(style, 29)} width="960" height="540" alt="Paper Cut ending: Small steps, big days, with a rubber stamp" loading="lazy" data-rise style="--i:1" />
+  </section>
+</Base>
+
+<style>
+  /* hero */
+  .hero { min-height: calc(100svh - 88px); display: grid; grid-template-rows: auto auto; align-content: space-between; gap: 32px; padding-block: 2vh 36px; }
+  .strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-inline: 30vw; }
+  .strip::-webkit-scrollbar { display: none; }
+  .frame { flex: none; margin: 0; scroll-snap-align: center; }
+  .frame img, .frame video { height: 38vh; width: auto; aspect-ratio: 16 / 9; object-fit: cover; transition: filter .5s var(--ease), transform .5s var(--ease); }
+  :global(.js) .frame img, :global(.js) .frame video { filter: brightness(.5) saturate(.85); transform: scale(.94); }
+  :global(.js) .frame.lit img, :global(.js) .frame.lit video, :global(.js) .frame:hover img { filter: none; transform: none; }
+  .hero-foot { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 28px 48px; }
+  .hero-foot h1 { grid-column: 1 / -1; font-size: var(--t-display); letter-spacing: -0.045em; line-height: .92; }
+  .hero-act { grid-column: 1 / -1; grid-template-columns: auto auto; justify-content: space-between; align-items: end; }
+  @media (max-width: 900px) { .hero-act { grid-template-columns: 1fr; } }
+  .hero-act { display: grid; gap: 22px; justify-items: start; }
+  .lede { max-width: 34ch; font-size: var(--t-h3); line-height: 1.35; }
+  @media (max-width: 900px) {
+    .hero { min-height: 0; padding-block: 8px 24px; gap: 40px; }
+    .frame img, .frame video { height: 30vh; max-height: 46vw; }
+    .strip { padding-inline: 8vw; }
+    .hero-foot { grid-template-columns: 1fr; gap: 24px; }
+  }
+
+  /* styles run */
+  .run-section { display: grid; grid-template-columns: minmax(220px, 3fr) 9fr; gap: 32px; margin-top: var(--gap-section); }
+  .run-side { display: flex; flex-direction: column; gap: 14px; }
+  .run-side .note { max-width: 30ch; font-size: var(--t-small); }
+  .run-side .note:first-of-type { margin-top: auto; }
+  .run { display: flex; align-items: end; gap: 6px; }
+  .run-frame { margin: 0; flex: 17 1 0; min-width: 0; }
+  .run-frame.lifted { flex-grow: 46; }
+  .run-frame img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; transition: transform .35s var(--ease); }
+  .run-frame:hover img { transform: translateY(-6px); }
+  .run-frame figcaption { display: grid; gap: 2px; font-size: var(--t-small); line-height: 1.35; padding-top: 10px; }
+  @media (max-width: 900px) {
+    .run-section { grid-template-columns: 1fr; }
+    .run-side .note:first-of-type { margin-top: 8px; }
+    .run { flex-wrap: wrap; }
+    .run-frame { flex: 1 1 40%; }
+    .run-frame.lifted { flex-basis: 100%; order: -1; }
+  }
+
+  /* how it works, kraft field */
+  .how { background: var(--kraft); color: var(--kraft-ink); margin-top: var(--gap-section); padding-block: 96px; }
+  .how-top { display: flex; justify-content: space-between; align-items: end; gap: 24px; }
+  .how-buttons { display: flex; gap: 8px; }
+  .square { width: 48px; height: 48px; border: 0; border-radius: 0; background: var(--kraft-ink); color: var(--kraft); font: 700 20px/1 var(--text); cursor: pointer; transition: transform .15s var(--ease), background-color .15s var(--ease); }
+  .square:hover { background: #45434d; }
+  .square:active { transform: scale(.94); }
+  .progress { margin-top: 28px; }
+  .progress { position: relative; height: 6px; }
+  .progress::before { content: ''; position: absolute; inset: 0 var(--m); background: #cdbb9b; }
+  .progress span { position: absolute; left: var(--m); top: 0; height: 6px; width: 20%; background: var(--kraft-ink); transition: width .2s linear; }
+  .moments { list-style: none; margin: 40px 0 0; padding: 0 var(--m); display: flex; gap: 32px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; scroll-padding-inline: var(--m); }
+  .moments::-webkit-scrollbar { display: none; }
+  .moment { flex: none; width: 300px; scroll-snap-align: start; display: flex; flex-direction: column; }
+  .moment h3 { font-family: var(--text); font-weight: 700; font-size: 19px; letter-spacing: 0; }
+  .moment p { margin-top: 10px; font-size: var(--t-small); color: var(--kraft-muted); }
+  .moment img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+  @media (max-width: 760px) { .how { padding-block: 64px; } .how-buttons { display: none; } .moment { width: 72vw; } .moment div { height: 48px !important; } }
+
+  /* every frame */
+  .frames { display: grid; align-content: center; margin-top: var(--gap-section); position: relative; }
+  .frames-title { font-size: var(--t-h3); position: relative; z-index: 1; margin-bottom: -12px; }
+  .frames-row { display: flex; gap: 5vw; overflow-x: auto; scrollbar-width: none; padding-inline: var(--m); padding-block: 24px; scroll-snap-type: x proximity; }
+  .frames-row::-webkit-scrollbar { display: none; }
+  .frames-row img { flex: none; width: 11vw; min-width: 120px; height: 26svh; object-fit: cover; scroll-snap-align: start; transition: transform .25s var(--ease); }
+  .frames-row img:hover { transform: scale(1.1); }
+  @media (max-width: 760px) { .frames-row img { width: 34vw; height: auto; aspect-ratio: 2 / 3; } }
+
+  /* questions */
+  .faq { display: grid; grid-template-columns: 3fr 1fr 8fr; margin-top: var(--gap-section); }
+  .faq h2 { grid-column: 1; }
+  .faq-text { grid-column: 3; columns: 2; column-gap: 56px; }
+  .faq-text p { break-inside: avoid; margin-bottom: 22px; max-width: 40ch; }
+  .faq-text strong { font-weight: 700; }
+  @media (max-width: 900px) { .faq { grid-template-columns: 1fr; gap: 28px; } .faq h2, .faq-text { grid-column: 1; } .faq-text { columns: 1; } }
+
+  /* closing */
+  .cta { margin-top: var(--gap-section); display: grid; grid-template-columns: 5fr 6fr; gap: 56px; align-items: end; }
+  .cta-text { display: grid; gap: 22px; justify-items: start; }
+  .cta p { font-size: var(--t-h3); max-width: 30ch; line-height: 1.35; }
+  .cta img { width: 100%; height: auto; }
+  @media (max-width: 900px) { .cta { grid-template-columns: 1fr; gap: 32px; } }
+</style>
+
+<script>
+  // hero strip: start on the playing sample, light whichever frame is nearest the centre
+  const strip = document.querySelector<HTMLElement>('[data-strip]');
+  if (strip) {
+    const frames = [...strip.querySelectorAll<HTMLElement>('.frame')];
+    const start = strip.querySelector<HTMLElement>('[data-start]');
+    const centre = (el: HTMLElement) => el.offsetLeft + el.offsetWidth / 2;
+    const light = () => {
+      const mid = strip.scrollLeft + strip.clientWidth / 2;
+      let best = frames[0], d = Infinity;
+      for (const f of frames) { const dd = Math.abs(centre(f) - mid); if (dd < d) { d = dd; best = f; } }
+      frames.forEach((f) => f.classList.toggle('lit', f === best));
+    };
+    const settle = () => { if (start) strip.scrollLeft = centre(start) - strip.clientWidth / 2; light(); };
+    window.addEventListener('load', settle);
+    settle();
+    strip.addEventListener('scroll', () => requestAnimationFrame(light), { passive: true });
+  }
+
+  // every frame: open past the six near-identical title frames
+  const framesRow = document.querySelector<HTMLElement>('[data-frames]');
+  const sixth = framesRow?.children[6] as HTMLElement | undefined;
+  if (framesRow && sixth) window.addEventListener('load', () => { framesRow.scrollLeft = sixth.offsetLeft - framesRow.offsetLeft - 40; });
+
+  // how it works: buttons and the progress bar
+  const row = document.querySelector<HTMLElement>('[data-moments]');
+  const bar = document.querySelector<HTMLElement>('[data-progress]');
+  if (row && bar) {
+    const update = () => { const max = row.scrollWidth - row.clientWidth; const p = max > 0 ? row.scrollLeft / max : 1; bar.style.width = `calc((100% - 2 * var(--m)) * ${0.12 + 0.88 * p})`; };
+    row.addEventListener('scroll', () => requestAnimationFrame(update), { passive: true });
+    update();
+    document.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => row.scrollBy({ left: Number(b.dataset.step) * 332, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })));
+  }
+</script>

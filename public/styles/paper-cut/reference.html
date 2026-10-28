@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper Cut</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Caveat:wght@700&family=DM+Sans:wght@500;700&display=block">
+<style>
+/* Paper Cut player: a craft-table page with the stage and a transport strip. Original template by Rohan. */
+:root {
+  --desk: #2a2420; --strip: #3a312b; --ink: #f6efe2; --muted: #b9ab98; --edge: #4b4038; --accent: #f2b134;
+  --head: "Bricolage Grotesque", system-ui, sans-serif; --ui: "DM Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--desk); color: var(--ink); font-family: var(--ui); padding: 20px max(16px, env(safe-area-inset-right, 0px)) 28px max(16px, env(safe-area-inset-left, 0px)); }
+.page { max-width: 1180px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; }
+h1 { margin: 0; font: 800 clamp(24px, 3.6vw, 36px)/1 var(--head); letter-spacing: -0.01em; }
+h1 span { color: var(--accent); }
+header p { margin: 0; color: var(--muted); font-size: 14px; }
+.stage { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #e8d9be; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--strip); border: 1px solid var(--edge); border-radius: 12px; padding: 10px 12px; }
+.controls button, .controls label { font: 700 14px var(--ui); color: var(--ink); background: transparent; border: 1px solid var(--edge); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.controls button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #2a2420; }
+.controls button:focus-visible, .controls label:focus-within, #seek:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#toggle { min-width: 84px; background: var(--ink); color: #2a2420; border-color: var(--ink); }
+#seek { flex: 1 1 200px; min-width: 0; accent-color: var(--accent); }
+#clock { font: 700 14px var(--ui); font-variant-numeric: tabular-nums; color: var(--muted); min-width: 96px; text-align: right; }
+#vo { position: absolute; width: 1px; height: 1px; opacity: 0; }
+#status { margin: 0; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header><h1>Paper <span>Cut</span></h1><p>Demo · 18.5 s · cut paper drawn in code, sound synthesized</p></header>
+  <div class="stage"><canvas id="canvas" width="1280" height="720" aria-label="Paper Cut animation"></canvas></div>
+  <div class="controls">
+    <button id="toggle" type="button">Play</button>
+    <input id="seek" type="range" min="0" max="18.5" step="0.01" value="0" aria-label="Timeline">
+    <span id="clock">0.00 / 18.50</span>
+    <button id="mute" type="button" aria-pressed="true">Sound on</button>
+    <button id="repeat" type="button" aria-pressed="true">Loop</button>
+    <label for="vo">Load voiceover<input id="vo" type="file" accept="audio/*"></label>
+  </div>
+  <p id="status">Load a voiceover to hear it in sync; the effects drop to a lighter mix underneath.</p>
+</div>
+
+<script>
+// =====================================================================================================
+// PAPER CUT · an original style by Rohan
+// PK: maths, easing and seeded randomness · SND: synthesized paper-craft sound kit · paper drawing kit
+// · scenes · compositor · sound score · player. Every frame is a pure function of t (seconds).
+// Renderer contract: window.seek(t), window.DURATION, window.scoreSound, window.SFX.render(score, dur, sr, {voiceover}).
+// =====================================================================================================
+const PK = (() => {
+  const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
+  const lerp = (a, b, u) => a + (b - a) * u;
+  const prog = (t, t0, dur) => clamp((t - t0) / dur);
+  const ease = {
+    outCubic: (u) => 1 - (1 - u) ** 3,
+    inCubic: (u) => u ** 3,
+    outQuint: (u) => 1 - (1 - u) ** 5,
+    inOut: (u) => (u < 0.5 ? 16 * u ** 5 : 1 - (-2 * u + 2) ** 5 / 2),
+    sine: (u) => (1 - Math.cos(Math.PI * u)) / 2,
+    outBack: (u, k = 1.7) => (u <= 0 ? 0 : u >= 1 ? 1 : 1 + (k + 1) * (u - 1) ** 3 + k * (u - 1) ** 2),
+    settle: (u) => (u <= 0 ? 0 : u >= 1 ? 1 : 1 - Math.exp(-7 * u) * Math.cos(10 * u)),
+  };
+  // FNV-1a string hash, then mulberry32 for a small, fast seeded generator
+  const hash = (s) => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+  const seeded = (seed) => {
+    let a = typeof seed === 'number' ? seed >>> 0 : hash(seed);
+    const r = () => { a = (a + 0x6d2b79f5) | 0; let x = Math.imul(a ^ (a >>> 15), 1 | a); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+    r.range = (lo, hi) => lo + r() * (hi - lo);
+    return r;
+  };
+  // smooth 1D noise in -1..1 (cosine-interpolated lattice)
+  const wave = (seed) => { const r = seeded(seed), v = Array.from({ length: 512 }, () => r() * 2 - 1);
+    return (x) => { const i = Math.floor(x), f = x - i, w = (1 - Math.cos(Math.PI * f)) / 2; return lerp(v[((i % 512) + 512) % 512], v[(((i + 1) % 512) + 512) % 512], w); }; };
+  const canvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+  return { clamp, lerp, prog, ease, hash, seeded, wave, canvas };
+})();
+
+// =====================================================================================================
+// SND · paper-craft sound kit. Plain Web Audio, no files. Voiceover mode lowers the music bed and plays
+// sounds marked `soft` at 60%.
+// =====================================================================================================
+const SND = (() => {
+  const NOTES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const freq = (n) => { if (typeof n === 'number') return n; const m = /^([A-G])(#|b)?(\d)$/.exec(n); const k = NOTES[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (+m[3] + 1) * 12; return 440 * 2 ** ((k - 69) / 12); };
+
+  function kit(ac, o = {}) {
+    const VO = !!o.voiceover, SR = ac.sampleRate, FROM = o.from || 0, T0 = ac.currentTime + (o.lead || 0);
+    const when = (t) => T0 + (t - FROM);
+    const skip = (t) => t < FROM - 0.005;
+
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -16; comp.knee.value = 8; comp.ratio.value = 3; comp.attack.value = 0.005; comp.release.value = 0.2;
+    const out = ac.createGain(); out.gain.value = 0.9; comp.connect(out); out.connect(o.dest || ac.destination);
+    const fxBus = ac.createGain(); fxBus.gain.value = VO ? 0.8 : 1; fxBus.connect(comp);
+    const musBus = ac.createGain(); musBus.gain.value = VO ? 0.3 : 0.6; musBus.connect(comp);
+    const duckNode = ac.createGain(); duckNode.connect(musBus);
+    const ducks = [];
+
+    // a small wooden-room reverb from shaped noise
+    const room = ac.createConvolver();
+    { const len = Math.floor(0.9 * SR), b = ac.createBuffer(2, len, SR);
+      for (let ch = 0; ch < 2; ch++) { const r = PK.seeded('room' + ch), d = b.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (r() * 2 - 1) * (1 - i / len) ** 3.2 * 0.7; }
+      room.buffer = b; }
+    const roomIn = ac.createGain(); roomIn.gain.value = 0.55; roomIn.connect(room); room.connect(comp);
+
+    const NOISE = (() => { const len = SR, b = ac.createBuffer(1, len, SR), d = b.getChannelData(0), r = PK.seeded('paper-noise'); for (let i = 0; i < len; i++) d[i] = r() * 2 - 1; return b; })();
+    const level = (p, def) => (p.g == null ? def : p.g) * (VO && p.soft ? 0.6 : 1);
+    const shape = (g, s, peak, a, d) => { g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(peak, s + a); g.gain.exponentialRampToValueAtTime(0.0001, s + a + d); g.gain.setValueAtTime(0, s + a + d + 0.01); };
+    const send = (node, p, s) => {
+      let n = node;
+      if (p.pan != null) { const pn = ac.createStereoPanner(); if (Array.isArray(p.pan)) { pn.pan.setValueAtTime(p.pan[0], s); pn.pan.linearRampToValueAtTime(p.pan[1], s + (p.d || 0.2)); } else pn.pan.value = PK.clamp(p.pan, -1, 1); n.connect(pn); n = pn; }
+      n.connect(p.music ? duckNode : fxBus);
+      if (p.wet) { const w = ac.createGain(); w.gain.value = p.wet; n.connect(w); w.connect(roomIn); }
+    };
+
+    // primitive voices
+    function tone(t, p) {
+      if (skip(t)) return; const s = when(t), a = p.a ?? 0.004, d = p.d ?? 0.2;
+      const osc = ac.createOscillator(); osc.type = p.type || 'sine'; osc.frequency.setValueAtTime(freq(p.f), s);
+      if (p.to) osc.frequency.exponentialRampToValueAtTime(freq(p.to), s + (p.glide ?? d));
+      const g = ac.createGain(); shape(g, s, level(p, 0.2), a, d);
+      if (p.lp) { const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = p.lp; osc.connect(f); f.connect(g); } else osc.connect(g);
+      send(g, p, s); osc.start(s); osc.stop(s + a + d + 0.05);
+    }
+    function grain(t, p) {
+      if (skip(t)) return; const s = when(t), a = p.a ?? 0.003, d = p.d ?? 0.05;
+      const src = ac.createBufferSource(); src.buffer = NOISE; src.loop = true;
+      const f = ac.createBiquadFilter(); f.type = p.ft || 'bandpass'; f.Q.value = p.q ?? 1; f.frequency.setValueAtTime(p.ff ?? 2000, s);
+      if (p.ff2) f.frequency.exponentialRampToValueAtTime(p.ff2, s + a + d);
+      const g = ac.createGain(); shape(g, s, level(p, 0.2), a, d);
+      src.connect(f); f.connect(g); send(g, p, s);
+      src.start(s, PK.seeded('ofs' + t)() * 0.9); src.stop(s + a + d + 0.05);
+    }
+    const duck = (t, depth = 0.5, hold = 0.3) => ducks.push({ t, depth, hold });
+
+    // named sounds: the paper-craft palette
+    const S = {
+      rustle: (t, o) => { const r = PK.seeded('ru' + t), end = o.d || 0.28; for (let x = 0; x < end; x += 0.018 + r() * 0.025) grain(t + x, { ff: r.range(1800, 5200), q: 1.6, d: 0.03, g: 0.12 * o.k * r.range(0.5, 1), pan: o.pan, soft: true }); },
+      slide: (t, o) => { const d = o.d || 0.45; grain(t, { ff: 500, ff2: 2600, q: 0.8, a: d * 0.6, d: d * 0.4, g: 0.22 * o.k, pan: o.pan, wet: 0.1, soft: o.soft }); S.rustle(t + d * 0.2, { k: 0.5 * o.k, d: d * 0.6, pan: o.pan }); },
+      land: (t, o) => { tone(t, { f: 130, to: 62, d: 0.12, g: 0.32 * o.k, pan: o.pan }); grain(t, { ft: 'lowpass', ff: 900, d: 0.05, g: 0.22 * o.k, pan: o.pan }); },
+      pop: (t, o) => { const f = o.f || 640; tone(t, { f: f * 1.6, to: f, glide: 0.05, d: 0.07, g: 0.18 * o.k, pan: o.pan, soft: o.soft }); grain(t, { ft: 'highpass', ff: 4200, d: 0.008, g: 0.07 * o.k, pan: o.pan }); },
+      snip: (t, o) => { for (const dt of [0, 0.075]) { grain(t + dt, { ft: 'highpass', ff: 5200, d: 0.012, g: 0.3 * o.k, pan: o.pan }); tone(t + dt, { f: 2900, d: 0.012, g: 0.05 * o.k, pan: o.pan }); } },
+      tape: (t, o) => { const d = o.d || 0.3, r = PK.seeded('tp' + t); grain(t, { ff: 1400, ff2: 4200, q: 1.2, a: 0.02, d, g: 0.16 * o.k, pan: o.pan }); for (let x = 0; x < d; x += 0.012 + r() * 0.01) grain(t + x, { ft: 'highpass', ff: 6000, d: 0.004, g: 0.1 * o.k * r(), pan: o.pan }); },
+      stamp: (t, o) => { tone(t, { f: 95, to: 44, d: 0.26, g: 0.55 * o.k }); grain(t, { ft: 'lowpass', ff: 1300, d: 0.08, g: 0.35 * o.k, wet: 0.25 }); grain(t + 0.004, { ft: 'highpass', ff: 3800, d: 0.015, g: 0.15 * o.k }); duck(t, 0.6, 0.35); },
+      pluck: (t, o) => { tone(t, { f: o.f || 'E5', d: 0.55, g: 0.12 * o.k, wet: 0.3, pan: o.pan, soft: o.soft }); tone(t, { f: freq(o.f || 'E5') * 2.01, d: 0.18, g: 0.03 * o.k, pan: o.pan, soft: o.soft }); },
+      tick: (t, o) => grain(t, { ff: o.f || 3600, q: 4, d: 0.014, g: 0.3 * o.k, pan: o.pan, soft: true }),
+      flip: (t, o) => { const d = o.d || 0.5, dir = o.dir || 1; grain(t, { ff: 350, ff2: 1900, q: 0.7, a: d * 0.55, d: d * 0.45, g: 0.32 * o.k, pan: [-0.6 * dir, 0.6 * dir], wet: 0.12 }); S.rustle(t + d * 0.35, { k: 0.8 * o.k, d: d * 0.5, pan: 0.3 * dir }); },
+      pour: (t, o) => { const r = PK.seeded('pour' + t), d = o.d || 1.2; grain(t, { ff: 900, ff2: 1500, q: 0.6, a: 0.1, d, g: 0.06 * o.k, pan: o.pan, soft: true }); for (let x = 0; x < d; x += 0.05 + r() * 0.07) tone(t + x, { f: r.range(380, 900) * (1 + x / d * 0.6), to: r.range(900, 1400), glide: 0.04, d: 0.05, g: 0.05 * o.k, pan: o.pan, soft: true }); },
+      twinkle: (t, o) => ['E6', 'G6', 'C7'].forEach((n, i) => tone(t + i * 0.06, { f: n, d: 0.35, g: 0.04 * o.k, wet: 0.4, pan: (i - 1) * 0.4 })),
+    };
+    function play(name, t, opts = {}) { const fn = S[name]; if (!fn) throw new Error('unknown sound ' + name); fn(t, Object.assign({}, opts, { k: opts.gain == null ? 1 : opts.gain })); }
+
+    // music bed: kalimba arpeggios over I-V-vi-IV with a soft shaker and a felt kick
+    function bed(t0, t1, p = {}) {
+      const bpm = p.bpm || 100, eighth = 30 / bpm, g = p.gain ?? 1;
+      const chords = p.chords || [['C4', 'E4', 'G4', 'C5'], ['G3', 'B3', 'D4', 'G4'], ['A3', 'C4', 'E4', 'A4'], ['F3', 'A3', 'C4', 'F4']];
+      const order = [0, 1, 2, 3, 2, 1, 3, 2];
+      for (let i = 0, t = t0; t < t1 - 0.05; i++, t += eighth) {
+        const ch = chords[Math.floor(i / 8) % chords.length], n = ch[order[i % 8]];
+        tone(t, { f: n, d: 0.5, g: 0.05 * g * (i % 8 === 0 ? 1.3 : 1), wet: 0.35, music: true, pan: ((i % 4) - 1.5) * 0.15 });
+        grain(t, { ft: 'highpass', ff: 6500, d: i % 2 ? 0.03 : 0.05, g: (i % 2 ? 0.025 : 0.04) * g, music: true });
+        if (i % 4 === 0) tone(t, { f: 110, to: 48, d: 0.2, g: 0.22 * g, music: true });
+        if (i % 8 === 0) tone(t, { f: freq(ch[0]) / 2, d: eighth * 7, a: 0.05, g: 0.05 * g, lp: 500, music: true });
+      }
+    }
+    function finish() {
+      ducks.sort((a, b) => a.t - b.t);
+      for (const e of ducks) { const s = when(e.t); if (s + e.hold < ac.currentTime) continue; duckNode.gain.setTargetAtTime(1 - e.depth, Math.max(s, ac.currentTime), 0.01); duckNode.gain.setTargetAtTime(1, s + e.hold, 0.15); }
+    }
+    return { play, tone, grain, bed, duck, finish, freq, voiceover: VO };
+  }
+  function live(score, from, opts = {}) {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const k = kit(ac, Object.assign({}, opts, { from: from || 0, lead: 0.05 })); score(k); k.finish();
+    return () => { try { ac.close(); } catch (e) {} };
+  }
+  async function render(score, dur, sr = 48000, opts = {}) {
+    const frames = Math.ceil(dur * sr), ac = new OfflineAudioContext(2, frames, sr);
+    const k = kit(ac, Object.assign({}, opts, { from: 0 })); score(k); k.finish();
+    const buf = await ac.startRendering(), L = buf.getChannelData(0), R = buf.getChannelData(1), inter = new Float32Array(frames * 2);
+    let peak = 0; for (let i = 0; i < frames; i++) { inter[2 * i] = L[i]; inter[2 * i + 1] = R[i]; peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i])); }
+    return { inter, peak, sr, frames };
+  }
+  return { kit, live, render, freq };
+})();
+
+// =====================================================================================================
+// PAPER DRAWING KIT
+// Every piece is a flat path filled with one paper colour, lifted off the table by a soft shadow whose
+// offset and blur grow with its height (`lift`), with a light rim on the edge facing the lamp (top left).
+// =====================================================================================================
+const W = 1280, H = 720;
+const { clamp, lerp, prog, ease, seeded, wave } = PK;
+const PAL = { kraft: '#E8D9BE', cream: '#F8F1E2', ink: '#2B2A33', tomato: '#E4572E', mustard: '#F2B134', sage: '#B9D3A8', leaf: '#8DB38B', moss: '#5E8C61', sky: '#A9CBE8', dawn: '#D9C6E6', navy: '#2F3E5C', blush: '#F4B8A6', water: '#5AA9D6', rule: '#BFD3EA' };
+const FONT = { head: (px) => `800 ${px}px "Bricolage Grotesque", system-ui, sans-serif`, hand: (px) => `700 ${px}px Caveat, cursive`, ui: (px, w = 700) => `${w} ${px}px "DM Sans", system-ui, sans-serif` };
+
+const PATHS = new Map();
+const cached = (key, build) => { if (!PATHS.has(key)) PATHS.set(key, build()); return PATHS.get(key); };
+
+function lifted(ctx, lift) {
+  ctx.shadowColor = `rgba(62,40,18,${0.2 + Math.min(lift, 30) * 0.006})`;
+  ctx.shadowBlur = 2 + lift * 1.4; ctx.shadowOffsetX = lift * 0.45; ctx.shadowOffsetY = lift * 0.75;
+}
+// one paper piece
+function piece(ctx, path, color, lift = 6, rim = true) {
+  ctx.save(); lifted(ctx, lift); ctx.fillStyle = color; ctx.fill(path); ctx.restore();
+  if (!rim) return;
+  ctx.save(); ctx.clip(path); ctx.lineWidth = 3;
+  ctx.translate(1.4, 1.4); ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.stroke(path);
+  ctx.translate(-2.8, -2.8); ctx.strokeStyle = 'rgba(40,20,0,.10)'; ctx.stroke(path);
+  ctx.restore();
+}
+// rectangle with a hand-torn edge (local coords from 0,0)
+function torn(w, h, seed, rough = 4, step = 8) {
+  return cached(`torn:${w}:${h}:${seed}:${rough}`, () => {
+    const n = wave(seed), r = seeded(seed + 'j'), p = new Path2D(); let i = 0;
+    const j = () => (n(i * 0.35) * 0.7 + (r() - 0.5) * 0.6) * rough, pts = [];
+    for (let x = 0; x < w; x += step, i++) pts.push([x, j()]);
+    for (let y = 0; y < h; y += step, i++) pts.push([w + j(), y]);
+    for (let x = w; x > 0; x -= step, i++) pts.push([x, h + j()]);
+    for (let y = h; y > 0; y -= step, i++) pts.push([j(), y]);
+    pts.forEach(([x, y], k) => (k ? p.lineTo(x, y) : p.moveTo(x, y))); p.closePath(); return p;
+  });
+}
+// rolling hill with a slightly torn top edge, reaching below the frame
+function hill(seed, base, amp, bumps = 2) {
+  return cached(`hill:${seed}`, () => {
+    const r = seeded(seed), ph = [r() * 6.28, r() * 6.28], p = new Path2D();
+    p.moveTo(-80, H + 60);
+    for (let x = -80; x <= W + 80; x += 10) { const u = x / W; p.lineTo(x, base - amp * (0.6 * Math.sin(u * Math.PI * bumps + ph[0]) + 0.4 * Math.sin(u * Math.PI * bumps * 2.3 + ph[1])) + (r() - 0.5) * 2.2); }
+    p.lineTo(W + 80, H + 60); p.closePath(); return p;
+  });
+}
+const circle = (x, y, r) => { const p = new Path2D(); p.arc(x, y, r, 0, Math.PI * 2); return p; };
+const rect = (x, y, w, h, rad = 0) => { const p = new Path2D(); p.roundRect(x, y, w, h, rad); return p; };
+// a puffy cloud: three overlapping bumps on a flat base
+function cloud(seed, s) { return cached(`cloud:${seed}`, () => { const r = seeded(seed), p = new Path2D(); for (const [x, y, rr] of [[-44, 0, 30], [0, -18, r.range(40, 48)], [46, -2, r.range(28, 34)]]) { p.moveTo((x + rr) * s, y * s); p.arc(x * s, y * s, rr * s, 0, Math.PI * 2); } p.roundRect(-78 * s, -4 * s, 156 * s, 34 * s, 17 * s); return p; }); }
+
+// a word cut out as a sticker: cream backing edge, ink face, lifted by `lift`
+function sticker(ctx, text, x, y, font, color, lift = 5, edge = PAL.cream, border = 14) {
+  ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+  ctx.save(); lifted(ctx, lift); ctx.strokeStyle = edge; ctx.lineWidth = border; ctx.strokeText(text, x, y); ctx.restore();
+  ctx.fillStyle = color; ctx.fillText(text, x, y);
+}
+// a dropped piece falls onto the table: big and high, then lands with a little squash
+function dropState(t, t0, dur = 0.55) {
+  const u = prog(t, t0, dur); if (u <= 0) return null;
+  const air = 1 - ease.outQuint(u), squash = u > 0.42 && u < 0.78 ? Math.sin(((u - 0.42) / 0.36) * Math.PI) * 0.05 : 0;
+  return { a: clamp(u * 5), s: 1 + 0.3 * air, dy: -42 * air, lift: 4 + 26 * air, squash, air };
+}
+// lay out words on a line; returns items with centre x
+function line(ctx, items, cx, gap) {
+  let total = 0; items.forEach((it) => { ctx.font = it.font; it.w = ctx.measureText(it.text).width; total += it.w; });
+  total += gap * (items.length - 1); let x = cx - total / 2;
+  items.forEach((it) => { it.x = x + it.w / 2; x += it.w + gap; }); return items;
+}
+function dropWord(ctx, it, t) {
+  const d = dropState(t, it.t); if (!d) return;
+  ctx.save(); ctx.globalAlpha = d.a; ctx.translate(it.x, it.y + d.dy); ctx.rotate((it.rot || 0) * (1 + 2.5 * d.air));
+  ctx.scale(d.s * (1 + d.squash), d.s * (1 - d.squash));
+  sticker(ctx, it.text, 0, 0, it.font, it.color || PAL.ink, d.lift, it.edge || PAL.cream, it.border || 14);
+  ctx.restore();
+}
+// handwritten line that writes on left to right
+function handwrite(ctx, text, x, y, px, color, t, t0, dur = 0.6, align = 'center') {
+  const u = prog(t, t0, dur); if (u <= 0) return;
+  ctx.save(); ctx.font = FONT.hand(px); ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+  const w = ctx.measureText(text).width, x0 = align === 'center' ? x - w / 2 : x;
+  ctx.beginPath(); ctx.rect(x0 - 10, y - px * 1.2, (w + 20) * ease.sine(u), px * 1.6); ctx.clip();
+  ctx.fillStyle = color; ctx.fillText(text, x, y); ctx.restore();
+}
+// a strip of masking tape
+function tape(ctx, x, y, w, rot, t, t0, seed) {
+  const s = ease.outBack(prog(t, t0, 0.3), 2); if (s <= 0) return;
+  const p = cached(`tape:${w}:${seed}`, () => { const r = seeded(seed), q = new Path2D(), h = 30; q.moveTo(0, 0);
+    for (let x2 = 0; x2 <= w; x2 += w / 6) q.lineTo(x2, r.range(-1, 1));
+    for (let y2 = 0; y2 <= h; y2 += 5) q.lineTo(w + (y2 / 5) % 2 * 4, y2);
+    for (let x2 = w; x2 >= 0; x2 -= w / 6) q.lineTo(x2, h + r.range(-1, 1));
+    for (let y2 = h; y2 >= 0; y2 -= 5) q.lineTo(-((y2 / 5) % 2) * 4, y2); q.closePath(); return q; });
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s); ctx.translate(-w / 2, -15);
+  ctx.save(); lifted(ctx, 2); ctx.fillStyle = 'rgba(240,226,176,.82)'; ctx.fill(p); ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1; for (let k = 6; k < w; k += 9) { ctx.beginPath(); ctx.moveTo(k, 3); ctx.lineTo(k - 3, 27); ctx.stroke(); }
+  ctx.restore();
+}
+// a label tag pinned with tape: "STEP 1"
+function stepTag(ctx, label, t, t0) {
+  const s = ease.outBack(prog(t, t0, 0.4), 2.2); if (s <= 0) return;
+  ctx.save(); ctx.translate(150, 92); ctx.rotate(-0.05); ctx.scale(s, s);
+  ctx.font = FONT.ui(30); const w = ctx.measureText(label).width + 44;
+  piece(ctx, torn(w, 58, 'tag' + label, 2.5), PAL.navy, 5);
+  ctx.fillStyle = PAL.cream; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, w / 2, 31);
+  ctx.restore();
+  tape(ctx, 146, 96, 62, -0.85, t, t0 + 0.12, 'tg' + label);
+}
+// rubber stamp, slammed onto the paper
+let STAMP_INK = null;
+function stampLayer() {
+  if (STAMP_INK) return STAMP_INK;
+  const c = PK.canvas(300, 300), x = c.getContext('2d'); x.translate(150, 150);
+  x.strokeStyle = PAL.tomato; x.fillStyle = PAL.tomato; x.lineWidth = 10; x.beginPath(); x.arc(0, 0, 130, 0, Math.PI * 2); x.stroke();
+  x.lineWidth = 3; x.beginPath(); x.arc(0, 0, 112, 0, Math.PI * 2); x.stroke();
+  x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = FONT.head(64); x.fillText('TRY IT', 0, -8);
+  x.font = FONT.ui(24); x.fillText('TOMORROW', 0, 44);
+  x.globalCompositeOperation = 'destination-out'; const r = seeded('stamp-ink');
+  for (let i = 0; i < 700; i++) { x.globalAlpha = r.range(0.25, 1); x.beginPath(); x.arc(r.range(-150, 150), r.range(-150, 150), r.range(0.5, 2.4), 0, 7); x.fill(); }
+  return (STAMP_INK = c);
+}
+
+// paper grain and lamp light, applied over every frame
+let GRAIN = null;
+function grainTile() {
+  if (GRAIN) return GRAIN;
+  const c = PK.canvas(320, 320), x = c.getContext('2d'), r = seeded('fibres');
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, 320, 320);
+  for (let i = 0; i < 1600; i++) { x.fillStyle = `rgba(120,96,70,${r.range(0.05, 0.22)})`; x.fillRect(r() * 320, r() * 320, 1, 1); }
+  x.lineCap = 'round';
+  for (let i = 0; i < 220; i++) { const px = r() * 320, py = r() * 320, a = r() * Math.PI, l = r.range(4, 14); x.strokeStyle = `rgba(130,105,80,${r.range(0.05, 0.14)})`; x.lineWidth = r.range(0.4, 1); x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + Math.cos(a) * l * 0.5 + r.range(-2, 2), py + Math.sin(a) * l * 0.5 + r.range(-2, 2), px + Math.cos(a) * l, py + Math.sin(a) * l); x.stroke(); }
+  return (GRAIN = c);
+}
+function finishing(ctx) {
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.75; ctx.fillStyle = ctx.createPattern(grainTile(), 'repeat'); ctx.fillRect(0, 0, W, H); ctx.restore();
+  const lamp = ctx.createLinearGradient(0, 0, W, H); lamp.addColorStop(0, 'rgba(255,248,230,.10)'); lamp.addColorStop(0.5, 'rgba(255,248,230,0)'); lamp.addColorStop(1, 'rgba(60,35,10,.10)');
+  ctx.fillStyle = lamp; ctx.fillRect(0, 0, W, H);
+  const v = ctx.createRadialGradient(W / 2, H / 2, 300, W / 2, H / 2, 820); v.addColorStop(0, 'rgba(40,24,8,0)'); v.addColorStop(1, 'rgba(40,24,8,.32)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+}
+
+// =====================================================================================================
+// THE STORY (demo): "A calmer morning in 3 small steps"
+// Replace TL, CUTS, SHAKES, the scene functions, SCENES and scoreSound() for a new topic.
+// =====================================================================================================
+const TL = {
+  D: 18.5,
+  title: { strip: 0.45, w: [0.75, 0.95, 1.25], tape: [1.05, 1.18], hand: 1.85, out: 3.7 },
+  land: { hills: [0.1, 0.25, 0.4], trees: [1.4, 1.55, 1.7], house: 4.0 },
+  step1: { tag: 4.3, w: [4.55, 4.75], hand: 5.25, sun: 4.6, sunDur: 1.8, curtains: 5.9, light: 6.45, stars: 6.65 },
+  step2: { tag: 8.75, w: [8.95, 9.15], hand: 9.6, glass: 8.85, pour: 9.4, pourDur: 1.6, label: 11.15 },
+  step3: { tag: 12.85, w: [13.05, 13.25], clock: 12.95, sweep: 13.5, sweepDur: 1.7, shoe: [13.3, 15.3] },
+  end: { confetti: 16.25, w: [16.45, 16.8], strip: 16.7, tape: [17.05, 17.15], stamp: 17.55 },
+};
+// scene changes: [start, duration, kind]; 'sheet' slides a new sheet over from the side, 'tear' rips it up from below
+const CUTS = [
+  { t: 8.05, d: 0.6, kind: 'sheet', dir: 1 },
+  { t: 12.2, d: 0.65, kind: 'tear' },
+  { t: 15.75, d: 0.6, kind: 'sheet', dir: -1 },
+];
+const SHAKES = [{ t: TL.end.stamp, a: 9 }];
+const SCENE_SPAN = [[0, 8.65], [8.05, 12.85], [12.2, 16.35], [15.75, 18.5]];
+
+// camera: a slow push per scene and a gentle drift; layers move by their depth for parallax
+function cam(t, si) { const [a, b] = SCENE_SPAN[si]; return { z: 1 + 0.04 * ease.sine(prog(t, a, b - a)), x: Math.sin(t * 0.45) * 7, y: Math.cos(t * 0.37) * 4 }; }
+function layer(ctx, c, depth, draw) {
+  ctx.save(); ctx.translate(W / 2 + c.x * depth, H / 2 + c.y * depth); const z = 1 + (c.z - 1) * depth; ctx.scale(z, z); ctx.translate(-W / 2, -H / 2); draw(); ctx.restore();
+}
+const slideUp = (t, t0, dist = 420) => (1 - ease.outBack(prog(t, t0, 0.7), 1.2)) * dist;
+
+// --- scene 0+1: the morning landscape (title, then step 1 in the same scene) ---
+const TREES = [[180, 560, 1.0], [262, 590, 0.75], [1150, 575, 0.9]];
+function sceneMorning(ctx, t) {
+  const L = TL.land, S1 = TL.step1, c = cam(t, 0);
+  const rise = ease.inOut(prog(t, S1.sun, S1.sunDur));
+  // sky warms from dawn lilac to day blue as the sun comes up
+  const sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, rise > 0 ? mixHex(PAL.dawn, PAL.sky, rise) : PAL.dawn); sky.addColorStop(1, mixHex('#F3E3D3', '#E7F0F2', rise));
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  layer(ctx, c, 0.15, () => {
+    // sun with rays, rising behind the hills
+    const sy = lerp(640, 250, rise);
+    if (rise > 0) {
+      ctx.save(); ctx.translate(760, sy); ctx.rotate(t * 0.15);
+      const rays = cached('rays', () => { const p = new Path2D(); for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; p.moveTo(Math.cos(a - 0.09) * 92, Math.sin(a - 0.09) * 92); p.lineTo(Math.cos(a) * 150, Math.sin(a) * 150); p.lineTo(Math.cos(a + 0.09) * 92, Math.sin(a + 0.09) * 92); p.closePath(); } return p; });
+      piece(ctx, rays, '#F6C766', 4, false); ctx.restore();
+      ctx.save(); ctx.translate(760, sy); piece(ctx, circle(0, 0, 86), PAL.mustard, 6); ctx.restore();
+    }
+  });
+  layer(ctx, c, 0.3, () => {
+    for (const [i, x0, y, s, v] of [[0, 120, 150, 1.0, 9], [1, 640, 95, 0.8, 6], [2, 1060, 165, 1.1, 8]]) {
+      const x = ((x0 + t * v) % (W + 300)) - 150;
+      ctx.save(); ctx.translate(x, y); piece(ctx, cloud('c' + i, s), PAL.cream, 8, false); ctx.restore();
+    }
+  });
+  const hills = [[PAL.sage, 470, 40, 0.45, 'h1'], [PAL.leaf, 540, 34, 0.65, 'h2'], [PAL.moss, 610, 26, 0.9, 'h3']];
+  hills.forEach(([col, base, amp, depth, seed], i) => layer(ctx, c, depth, () => {
+    ctx.save(); ctx.translate(0, slideUp(t, L.hills[i])); piece(ctx, hill(seed, base, amp, 2 + i * 0.4), col, 8 + i * 3); ctx.restore();
+    if (i === 1) drawHouse(ctx, t);
+    if (i === 2) TREES.forEach(([x, y, s], k) => drawTree(ctx, x, y, s, ease.outBack(prog(t, L.trees[k], 0.45), 2)));
+  }));
+  // title on a torn strip, lifted away before step 1
+  const T = TL.title, away = ease.inCubic(prog(t, T.out, 0.45));
+  if (t < T.out + 0.5) {
+    ctx.save(); ctx.translate(0, -away * 520);
+    const sx = (1 - ease.outQuint(prog(t, T.strip, 0.6))) * -1300;
+    ctx.save(); ctx.translate(170 + sx, 120); ctx.rotate(-0.02); piece(ctx, torn(940, 340, 'title', 5), PAL.cream, 10 + away * 20); ctx.restore();
+    tape(ctx, 196 + sx, 128, 110, -0.5, t, T.tape[0], 't1'); tape(ctx, 1088 + sx, 116, 110, 0.45, t, T.tape[1], 't2');
+    const w1 = line(ctx, [{ text: 'A', font: FONT.head(112), t: T.w[0], y: 245, rot: -0.03 }, { text: 'CALMER', font: FONT.head(112), t: T.w[1], y: 245, rot: 0.02 }], 640, 34);
+    const w2 = line(ctx, [{ text: 'MORNING', font: FONT.head(112), t: T.w[2], y: 352, rot: -0.015, color: PAL.tomato }], 640, 0);
+    [...w1, ...w2].forEach((it) => dropWord(ctx, it, t));
+    handwrite(ctx, 'in 3 small steps', 640, 425, 64, PAL.navy, t, T.hand, 0.65);
+    ctx.restore();
+  }
+  // step 1
+  stepTag(ctx, 'STEP 1', t, S1.tag);
+  line(ctx, [{ text: 'Let the', font: FONT.head(100), t: S1.w[0], y: 240, rot: -0.02 }], 330, 0).forEach((it) => dropWord(ctx, it, t));
+  line(ctx, [{ text: 'light in.', font: FONT.head(100), t: S1.w[1], y: 345, rot: 0.015, color: PAL.tomato }], 350, 0).forEach((it) => dropWord(ctx, it, t));
+  handwrite(ctx, 'open the curtains first', 120, 420, 52, PAL.navy, t, S1.hand, 0.7, 'left');
+}
+function drawTree(ctx, x, y, s, k) {
+  if (k <= 0) return; ctx.save(); ctx.translate(x, y); ctx.scale(k * s, k * s);
+  piece(ctx, rect(-9, -10, 18, 70, 4), '#8A6A4F', 4); piece(ctx, circle(0, -50, 56), PAL.leaf, 7); piece(ctx, circle(-14, -64, 26), '#A4C79A', 3, false);
+  ctx.restore();
+}
+function drawHouse(ctx, t) {
+  const L = TL.land, S1 = TL.step1, k = ease.outBack(prog(t, L.house, 0.5), 1.8); if (k <= 0) return;
+  ctx.save(); ctx.translate(930, 520); ctx.scale(k, k);
+  piece(ctx, rect(-110, -110, 220, 150, 4), PAL.cream, 9);
+  const roof = cached('roof', () => { const p = new Path2D(); p.moveTo(-135, -104); p.lineTo(0, -200); p.lineTo(135, -104); p.closePath(); return p; });
+  piece(ctx, roof, PAL.tomato, 10);
+  piece(ctx, rect(40, -48, 46, 88, 3), PAL.navy, 3);
+  // window: curtains slide apart, then the room lights up
+  const lit = prog(t, S1.light, 0.4), open = ease.outCubic(prog(t, S1.curtains, 0.55));
+  const win = rect(-80, -80, 96, 76, 4);
+  piece(ctx, win, mixHex(PAL.navy, '#FFD978', lit), 3);
+  if (lit > 0) { ctx.save(); ctx.globalCompositeOperation = 'screen'; const g = ctx.createRadialGradient(-32, -42, 4, -32, -42, 120); g.addColorStop(0, `rgba(255,214,120,${0.55 * lit})`); g.addColorStop(1, 'rgba(255,214,120,0)'); ctx.fillStyle = g; ctx.fillRect(-160, -170, 260, 260); ctx.restore(); }
+  ctx.save(); ctx.clip(win);
+  piece(ctx, rect(-80 - open * 44, -80, 50, 76, 2), PAL.blush, 2); piece(ctx, rect(-34 + open * 44, -80, 50, 76, 2), PAL.blush, 2);
+  ctx.restore();
+  piece(ctx, rect(-84, -6, 104, 10, 3), '#D8C7A8', 3);
+  ctx.restore();
+  // little paper stars when the light comes on
+  [[860, 380, 0], [1010, 360, 0.08], [948, 300, 0.16]].forEach(([x, y, d]) => { const s = ease.outBack(prog(t, S1.stars + d, 0.35), 2.4) * (1 - prog(t, S1.stars + 1.4 + d, 0.3)); if (s > 0) { ctx.save(); ctx.translate(x, y); ctx.rotate(t * 0.8); ctx.scale(s, s); piece(ctx, star(16), PAL.mustard, 4); ctx.restore(); } });
+}
+function star(r) { return cached('star' + r, () => { const p = new Path2D(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r; i ? p.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : p.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); } p.closePath(); return p; }); }
+function mixHex(a, b, u) { const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16), ch = (s) => Math.round(lerp((pa >> s) & 255, (pb >> s) & 255, clamp(u))); return `rgb(${ch(16)},${ch(8)},${ch(0)})`; }
+
+// --- scene 2: water on notebook paper ---
+let NOTEBOOK = null;
+function notebook() {
+  if (NOTEBOOK) return NOTEBOOK; const c = PK.canvas(W + 80, H + 80), x = c.getContext('2d');
+  x.fillStyle = PAL.cream; x.fillRect(0, 0, c.width, c.height);
+  x.strokeStyle = PAL.rule; x.lineWidth = 2; for (let y = 120; y < c.height; y += 52) { x.beginPath(); x.moveTo(0, y); x.lineTo(c.width, y); x.stroke(); }
+  x.strokeStyle = 'rgba(228,87,46,.55)'; x.lineWidth = 3; x.beginPath(); x.moveTo(110, 0); x.lineTo(110, c.height); x.stroke();
+  x.fillStyle = 'rgba(43,42,51,.12)'; for (const y of [180, 380, 580]) { x.beginPath(); x.arc(56, y, 14, 0, 7); x.fill(); }
+  return (NOTEBOOK = c);
+}
+function sceneWater(ctx, t) {
+  const S = TL.step2, c = cam(t, 1);
+  layer(ctx, c, 0.2, () => ctx.drawImage(notebook(), -40, -40));
+  stepTag(ctx, 'STEP 2', t, S.tag);
+  line(ctx, [{ text: 'Drink', font: FONT.head(108), t: S.w[0], y: 270, rot: -0.02 }], 340, 0).forEach((it) => dropWord(ctx, it, t));
+  line(ctx, [{ text: 'water.', font: FONT.head(108), t: S.w[1], y: 380, rot: 0.02, color: PAL.water }], 360, 0).forEach((it) => dropWord(ctx, it, t));
+  handwrite(ctx, 'before the coffee', 180, 460, 56, PAL.tomato, t, S.hand, 0.7, 'left');
+  layer(ctx, c, 0.7, () => {
+    const k = ease.outBack(prog(t, S.glass, 0.5), 1.6); if (k <= 0) return;
+    ctx.save(); ctx.translate(900, 410); ctx.scale(k, k);
+    const glass = cached('glass', () => { const p = new Path2D(); p.moveTo(-115, -170); p.lineTo(115, -170); p.lineTo(90, 150); p.quadraticCurveTo(0, 170, -90, 150); p.closePath(); return p; });
+    piece(ctx, glass, 'rgba(225,238,246,.75)', 10, false);
+    const fill = ease.inOut(prog(t, S.pour, S.pourDur)), top = lerp(150, -110, fill);
+    if (fill > 0) {
+      ctx.save(); ctx.clip(glass);
+      const wv = new Path2D(); wv.moveTo(-140, 200); for (let x = -140; x <= 140; x += 10) wv.lineTo(x, top + Math.sin(x * 0.05 + t * 5) * 6 * (1 - fill * 0.5)); wv.lineTo(140, 200); wv.closePath();
+      piece(ctx, wv, PAL.water, 2, false); ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(-140, top - 2, 280, 16);
+      const r = seeded('bub'); for (let i = 0; i < 9; i++) { const bx = r.range(-70, 70), sp = r.range(40, 90), by = 150 - ((t * sp + r() * 300) % 300); if (by > top + 10) { ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, r.range(3, 7), 0, 7); ctx.stroke(); } }
+      ctx.restore();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-88, -140); ctx.lineTo(-70, 110); ctx.stroke();
+    ctx.restore();
+    // counter on a hanging tag
+    const ts = ease.outBack(prog(t, S.pour - 0.1, 0.4), 2); if (ts > 0) {
+      const swing = Math.sin((t - S.pour) * 3) * 0.05 * Math.exp(-(t - S.pour) * 0.6);
+      ctx.save(); ctx.translate(1110, 150); ctx.rotate(-0.06 + swing); ctx.scale(ts, ts);
+      ctx.strokeStyle = PAL.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -60); ctx.lineTo(0, 0); ctx.stroke();
+      const tag = cached('mltag', () => { const p = new Path2D(); p.moveTo(-90, 20); p.lineTo(0, 0); p.lineTo(90, 20); p.lineTo(90, 200); p.lineTo(-90, 200); p.closePath(); return p; });
+      piece(ctx, tag, PAL.mustard, 8); ctx.fillStyle = 'rgba(43,42,51,.35)'; ctx.beginPath(); ctx.arc(0, 18, 7, 0, 7); ctx.fill();
+      const n = Math.round(250 * ease.outCubic(prog(t, S.pour, S.pourDur)));
+      ctx.fillStyle = PAL.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.font = FONT.head(78); ctx.fillText(String(n), 0, 128);
+      ctx.font = FONT.ui(30); ctx.fillText('ml', 0, 170); ctx.restore();
+    }
+    tape(ctx, 900, 245, 120, -0.08, t, S.label, 'h2o');
+    if (t > S.label) { ctx.save(); ctx.globalAlpha = prog(t, S.label + 0.1, 0.2); ctx.translate(900, 245); ctx.rotate(-0.08); ctx.fillStyle = PAL.navy; ctx.font = FONT.hand(34); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('1 glass', 0, 1); ctx.restore(); }
+  });
+}
+
+// --- scene 3: move, on a mustard sunburst ---
+function sceneMove(ctx, t) {
+  const S = TL.step3, c = cam(t, 2);
+  ctx.fillStyle = PAL.mustard; ctx.fillRect(0, 0, W, H);
+  layer(ctx, c, 0.15, () => {
+    ctx.save(); ctx.translate(880, 420); ctx.rotate(t * 0.06); ctx.fillStyle = '#F5BF52';
+    for (let i = 0; i < 18; i++) { const a = (i / 18) * Math.PI * 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 1300, a, a + Math.PI / 18); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  });
+  stepTag(ctx, 'STEP 3', t, S.tag);
+  line(ctx, [{ text: 'Move for', font: FONT.head(100), t: S.w[0], y: 250, rot: -0.02 }], 360, 0).forEach((it) => dropWord(ctx, it, t));
+  line(ctx, [{ text: '10 minutes.', font: FONT.head(100), t: S.w[1], y: 355, rot: 0.015, color: PAL.tomato }], 390, 0).forEach((it) => dropWord(ctx, it, t));
+  layer(ctx, c, 0.7, () => {
+    // clock: a 10-minute wedge sweeps round
+    const k = ease.outBack(prog(t, S.clock, 0.5), 1.7); if (k > 0) {
+      ctx.save(); ctx.translate(900, 400); ctx.scale(k, k);
+      piece(ctx, circle(0, 0, 175), PAL.navy, 12); piece(ctx, circle(0, 0, 155), PAL.cream, 3);
+      const sw = ease.inOut(prog(t, S.sweep, S.sweepDur)), a0 = -Math.PI / 2, a1 = a0 + (Math.PI / 3) * sw;
+      if (sw > 0) { const wedge = new Path2D(); wedge.moveTo(0, 0); wedge.arc(0, 0, 140, a0, a1); wedge.closePath(); piece(ctx, wedge, PAL.tomato, 3, false); }
+      ctx.strokeStyle = PAL.ink; ctx.lineCap = 'round';
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; ctx.lineWidth = i % 3 ? 4 : 7; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 128, Math.sin(a) * 128); ctx.lineTo(Math.cos(a) * 146, Math.sin(a) * 146); ctx.stroke(); }
+      ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a1) * 112, Math.sin(a1) * 112); ctx.stroke();
+      ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(-Math.PI / 2 + 0.5) * 70, Math.sin(-Math.PI / 2 + 0.5) * 70); ctx.stroke();
+      piece(ctx, circle(0, 0, 13), PAL.ink, 2, false);
+      const n = Math.round(10 * ease.outCubic(prog(t, S.sweep, S.sweepDur)));
+      ctx.fillStyle = PAL.navy; ctx.font = FONT.head(80); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText(String(n), 0, 84);
+      ctx.font = FONT.ui(28); ctx.fillText('min', 0, 114);
+      ctx.restore();
+    }
+    // a paper sneaker hopping on the beat
+    if (t > S.shoe[0] && t < S.shoe[1] + 0.6) {
+      const u = (t - S.shoe[0]) / 0.5, ph = u % 1, hop = Math.sin(Math.PI * ph) * 70 * (t < S.shoe[1] ? 1 : 0), land = ph < 0.12 ? (0.12 - ph) / 0.12 : 0;
+      const k2 = ease.outBack(prog(t, S.shoe[0], 0.35), 2);
+      ctx.save(); ctx.translate(470, 600 - hop); ctx.rotate(-0.12 + Math.sin(Math.PI * ph) * 0.18); ctx.scale(k2 * (1 + land * 0.08), k2 * (1 - land * 0.08));
+      const shoe = cached('shoe', () => { const p = new Path2D(); p.moveTo(-95, 20); p.lineTo(-95, -30); p.quadraticCurveTo(-90, -62, -50, -60); p.lineTo(-20, -58); p.quadraticCurveTo(0, -20, 50, -14); p.quadraticCurveTo(100, -8, 100, 22); p.closePath(); return p; });
+      piece(ctx, shoe, PAL.blush, 6 + hop * 0.2); piece(ctx, rect(-98, 14, 202, 18, 9), PAL.cream, 3);
+      ctx.strokeStyle = PAL.navy; ctx.lineWidth = 4; ctx.lineCap = 'round'; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-40 + i * 18, -50 + i * 8); ctx.lineTo(-24 + i * 18, -40 + i * 8); ctx.stroke(); }
+      ctx.restore();
+    }
+  });
+}
+
+// --- scene 4: takeaway on kraft with confetti ---
+const CONFETTI = (() => { const r = seeded('confetti'), cols = [PAL.tomato, PAL.mustard, PAL.leaf, PAL.sky, PAL.blush, PAL.navy]; return Array.from({ length: 34 }, (_, i) => ({ x: r() * W, y: r() * H, r: r.range(8, 18), rot: r() * 6.3, c: cols[i % cols.length], round: r() < 0.4, d: r() * 0.5 })).filter((p) => !(p.x > 260 && p.x < 1020 && p.y > 170 && p.y < 560)); })();
+function sceneEnd(ctx, t) {
+  const E = TL.end, c = cam(t, 3);
+  ctx.fillStyle = PAL.kraft; ctx.fillRect(0, 0, W, H);
+  layer(ctx, c, 0.4, () => CONFETTI.forEach((p) => { const s = ease.outBack(prog(t, E.confetti + p.d, 0.35), 2); if (s <= 0) return; ctx.save(); ctx.translate(p.x, p.y + Math.sin(t * 1.3 + p.rot) * 4); ctx.rotate(p.rot + t * 0.2); ctx.scale(s, s); piece(ctx, p.round ? circle(0, 0, p.r) : rect(-p.r, -p.r * 0.6, p.r * 2, p.r * 1.2, 2), p.c, 4, false); ctx.restore(); }));
+  const sx = (1 - ease.outQuint(prog(t, E.strip, 0.55))) * 1400;
+  ctx.save(); ctx.translate(330 + sx, 392); ctx.rotate(0.015); piece(ctx, torn(620, 150, 'endstrip', 5), PAL.mustard, 8); ctx.restore();
+  tape(ctx, 344 + sx, 400, 100, -0.5, t, E.tape[0], 'e1'); tape(ctx, 940 + sx, 395, 100, 0.5, t, E.tape[1], 'e2');
+  line(ctx, [{ text: 'Small', font: FONT.head(130), t: E.w[0], y: 320, rot: -0.02 }, { text: 'steps.', font: FONT.head(130), t: E.w[0] + 0.14, y: 320, rot: 0.02 }], 640, 36).forEach((it) => dropWord(ctx, it, t));
+  line(ctx, [{ text: 'Big days.', font: FONT.head(130), t: E.w[1], y: 515, rot: -0.01, color: PAL.tomato }], 640, 0).forEach((it) => dropWord(ctx, it, t));
+  if (t > E.stamp) {
+    const u = prog(t, E.stamp, 0.14), s = lerp(2.3, 1, ease.inCubic(u));
+    ctx.save(); ctx.translate(1075, 575); ctx.rotate(-0.2); ctx.scale(s * 0.8, s * 0.8); ctx.globalAlpha = clamp(u * 3) * 0.92; ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(stampLayer(), -150, -150); ctx.restore();
+  }
+}
+const SCENES = [sceneMorning, sceneWater, sceneMove, sceneEnd];
+
+// =====================================================================================================
+// COMPOSITOR
+// =====================================================================================================
+const SHEET_A = PK.canvas(W, H), SHEET_B = PK.canvas(W, H), EDGE = (() => { const r = seeded('edge'); return Array.from({ length: 120 }, () => (r() - 0.5) * 2); })();
+function sceneAt(t) { let i = 0; for (const c of CUTS) if (t >= c.t) i++; return i; }
+function paint(c, i, t) { const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, W, H); SCENES[i](x, t); return c; }
+function edgePath(kind, pos, dir) {
+  const p = new Path2D(), step = 12;
+  if (kind === 'tear') { p.moveTo(-40, H + 60); for (let x = -40, k = 0; x <= W + 40; x += step, k++) p.lineTo(x, pos + EDGE[k % 120] * 9 + Math.sin(x * 0.013) * 14); p.lineTo(W + 40, H + 60); }
+  else { const far = dir > 0 ? W + 60 : -60; p.moveTo(far, -40); for (let y = -40, k = 0; y <= H + 40; y += step, k++) p.lineTo(pos + EDGE[k % 120] * 7, y); p.lineTo(far, H + 40); }
+  p.closePath(); return p;
+}
+function frame(ctx, t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.filter = 'none';
+  let sx = 0, sy = 0; for (const s of SHAKES) { const d = t - s.t; if (d < 0 || d > 0.6) continue; const e = s.a * Math.exp(-d * 9); sx += e * Math.sin(d * 63); sy += e * Math.cos(d * 51); }
+  ctx.fillStyle = PAL.kraft; ctx.fillRect(0, 0, W, H); ctx.translate(sx, sy);
+  const i = sceneAt(t), cut = CUTS.find((c) => t >= c.t && t < c.t + c.d);
+  if (!cut) SCENES[i](ctx, t);
+  else {
+    const u = ease.inOut(prog(t, cut.t, cut.d));
+    ctx.save(); const push = cut.kind === 'tear' ? [0, -40 * u] : [-cut.dir * 60 * u, 0]; ctx.translate(push[0], push[1]); ctx.drawImage(paint(SHEET_A, i - 1, t), 0, 0);
+    ctx.fillStyle = `rgba(40,24,8,${0.18 * u})`; ctx.fillRect(0, 0, W, H); ctx.restore();
+    const pos = cut.kind === 'tear' ? lerp(H + 40, -50, u) : cut.dir > 0 ? lerp(W + 50, -60, u) : lerp(-50, W + 60, u);
+    const region = edgePath(cut.kind, pos, cut.dir || 1);
+    ctx.save(); lifted(ctx, 22); ctx.fillStyle = PAL.cream; ctx.fill(region); ctx.restore();
+    ctx.save(); ctx.clip(region); ctx.drawImage(paint(SHEET_B, i, t), 0, 0); ctx.restore();
+    // the white fibre core along a torn or cut edge
+    ctx.save(); ctx.strokeStyle = 'rgba(255,251,240,.95)'; ctx.lineWidth = cut.kind === 'tear' ? 7 : 4; ctx.stroke(region); ctx.restore();
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  finishing(ctx);
+}
+
+// =====================================================================================================
+// SOUND SCORE: reads the same TL times as the picture
+// =====================================================================================================
+function scoreSound(k) {
+  const T = TL.title, L = TL.land, S1 = TL.step1, S2 = TL.step2, S3 = TL.step3, E = TL.end;
+  const px = (x) => clamp((x / W) * 2 - 1, -1, 1) * 0.6;
+  k.bed(0.3, TL.D - 0.4, { bpm: 100, gain: 1 });
+  L.hills.forEach((t, i) => k.play('slide', t, { d: 0.5, gain: 0.7 - i * 0.12, pan: (i - 1) * 0.3 }));
+  L.trees.forEach((t, i) => k.play('pop', t, { f: 520 + i * 90, gain: 0.6, pan: px(TREES[i][0]) }));
+  k.play('pop', L.house, { f: 430, gain: 0.7, pan: px(930) });
+  k.play('slide', T.strip, { d: 0.5, gain: 0.9, pan: [-0.7, 0.1] });
+  T.w.forEach((t, i) => k.play('land', t + 0.3, { gain: i === 2 ? 1.1 : 0.8, pan: (i - 1) * 0.2 }));
+  T.tape.forEach((t, i) => k.play('tape', t, { gain: 0.8, pan: i ? 0.5 : -0.5 }));
+  k.play('pluck', T.hand, { f: 'G5', gain: 0.9 }); k.play('rustle', T.hand, { d: 0.6, gain: 0.5 });
+  k.play('flip', T.out, { d: 0.5, gain: 0.8, dir: -1 });
+  // step 1
+  k.play('pop', S1.tag, { f: 700, gain: 0.7, pan: -0.6 }); k.play('tape', S1.tag + 0.12, { gain: 0.6, pan: -0.6 });
+  S1.w.forEach((t) => k.play('land', t + 0.3, { gain: 0.85, pan: -0.4 }));
+  k.play('slide', S1.sun, { d: S1.sunDur * 0.8, gain: 0.35, pan: 0.2 });
+  k.play('rustle', S1.hand, { d: 0.7, gain: 0.45, pan: -0.5 });
+  k.play('slide', S1.curtains, { d: 0.45, gain: 0.55, pan: 0.45 });
+  k.play('pluck', S1.light, { f: 'C6', gain: 0.9, pan: 0.45 }); k.play('twinkle', S1.stars, { gain: 0.9 });
+  // cut 1: a new sheet slides over
+  k.play('flip', CUTS[0].t - 0.05, { d: 0.6, gain: 1, dir: -1 });
+  k.play('pop', S2.tag, { f: 720, gain: 0.7, pan: -0.6 }); k.play('tape', S2.tag + 0.12, { gain: 0.6, pan: -0.6 });
+  S2.w.forEach((t) => k.play('land', t + 0.3, { gain: 0.85, pan: -0.4 }));
+  k.play('pop', S2.glass, { f: 480, gain: 0.7, pan: 0.4 });
+  k.play('rustle', S2.hand, { d: 0.7, gain: 0.45, pan: -0.5 });
+  k.play('pour', S2.pour, { d: S2.pourDur, gain: 1, pan: 0.4 });
+  { let prev = -1, last = -1; for (let t = S2.pour; t < S2.pour + S2.pourDur; t += 1 / 120) { const n = Math.round(250 * ease.outCubic(prog(t, S2.pour, S2.pourDur)) / 25); if (n !== prev && t - last > 0.09) { k.play('tick', t, { f: 3000 + n * 120, gain: 0.5, pan: 0.7 }); last = t; } prev = n; } }
+  k.play('pluck', S2.pour + S2.pourDur, { f: 'E6', gain: 0.8, pan: 0.6 });
+  k.play('tape', S2.label, { gain: 0.7, pan: 0.4 });
+  // cut 2: the sheet is torn away from below
+  k.play('rustle', CUTS[1].t, { d: 0.55, gain: 1.4 }); k.play('slide', CUTS[1].t + 0.05, { d: 0.55, gain: 0.7 });
+  k.play('pop', S3.tag, { f: 740, gain: 0.7, pan: -0.6 }); k.play('tape', S3.tag + 0.12, { gain: 0.6, pan: -0.6 });
+  S3.w.forEach((t) => k.play('land', t + 0.3, { gain: 0.85, pan: -0.4 }));
+  k.play('pop', S3.clock, { f: 440, gain: 0.75, pan: 0.4 });
+  { let prev = -1; for (let t = S3.sweep; t <= S3.sweep + S3.sweepDur; t += 1 / 120) { const n = Math.round(10 * ease.outCubic(prog(t, S3.sweep, S3.sweepDur))); if (n !== prev) { k.play('tick', t, { f: 3200 + n * 90, gain: 0.55, pan: 0.4 }); prev = n; } } }
+  k.play('pluck', S3.sweep + S3.sweepDur, { f: 'G6', gain: 0.8, pan: 0.4 });
+  for (let t = S3.shoe[0] + 0.5; t < S3.shoe[1]; t += 0.5) k.play('land', t, { gain: 0.45, pan: -0.2 });
+  // cut 3 and the takeaway
+  k.play('flip', CUTS[2].t - 0.05, { d: 0.6, gain: 1, dir: 1 });
+  k.play('rustle', E.confetti, { d: 0.5, gain: 0.6 });
+  k.play('land', E.w[0] + 0.3, { gain: 1 }); k.play('land', E.w[0] + 0.44, { gain: 1 });
+  k.play('slide', E.strip, { d: 0.5, gain: 0.7, pan: [0.7, 0] }); E.tape.forEach((t, i) => k.play('tape', t, { gain: 0.7, pan: i ? 0.5 : -0.5 }));
+  k.play('land', E.w[1] + 0.3, { gain: 1.2 });
+  k.duck(E.stamp - 0.35, 0.8, 0.3); // a breath of quiet before the stamp
+  k.play('stamp', E.stamp + 0.12, { gain: 1.3, pan: 0.5 });
+  k.play('pluck', E.stamp + 0.4, { f: 'C6', gain: 0.8 }); k.play('pluck', E.stamp + 0.55, { f: 'G6', gain: 0.7 });
+}
+
+// =====================================================================================================
+// PLAYER
+// =====================================================================================================
+const cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
+const DURATION = TL.D;
+window.seek = (t) => frame(ctx, clamp(t, 0, DURATION));
+window.DURATION = DURATION;
+window.scoreSound = scoreSound;
+window.SFX = SND;
+
+const el = (id) => document.getElementById(id);
+const ui = { toggle: el('toggle'), seek: el('seek'), clock: el('clock'), mute: el('mute'), repeat: el('repeat'), vo: el('vo'), status: el('status') };
+let now = 0, playing = false, lastTick = 0, soundOn = true, looping = true, stopSound = null, voice = null;
+const show = () => { window.seek(now); ui.seek.value = now; ui.clock.textContent = `${now.toFixed(2)} / ${DURATION.toFixed(2)}`; };
+const stopAudio = () => { if (stopSound) { stopSound(); stopSound = null; } if (voice) voice.pause(); };
+const startAudio = () => { stopAudio(); if (!playing) return; if (soundOn) stopSound = SND.live(scoreSound, now, { voiceover: !!voice }); if (voice) { try { voice.currentTime = now; voice.play().catch(() => {}); } catch (e) {} } };
+const setPlaying = (p) => { playing = p; ui.toggle.textContent = p ? 'Pause' : 'Play'; lastTick = performance.now(); p ? startAudio() : stopAudio(); };
+function loop(ts) {
+  if (playing) { now += (ts - lastTick) / 1000; lastTick = ts; if (now >= DURATION) { if (looping) { now = 0; startAudio(); } else { now = DURATION; setPlaying(false); } } show(); }
+  requestAnimationFrame(loop);
+}
+ui.toggle.addEventListener('click', () => { if (!playing && now >= DURATION) now = 0; setPlaying(!playing); });
+ui.seek.addEventListener('input', () => { now = parseFloat(ui.seek.value); show(); if (playing) startAudio(); });
+ui.mute.addEventListener('click', () => { soundOn = !soundOn; ui.mute.setAttribute('aria-pressed', soundOn); ui.mute.textContent = soundOn ? 'Sound on' : 'Sound off'; if (playing) startAudio(); });
+ui.repeat.addEventListener('click', () => { looping = !looping; ui.repeat.setAttribute('aria-pressed', looping); });
+ui.vo.addEventListener('change', () => { const f = ui.vo.files && ui.vo.files[0]; if (!f) return; if (voice) { voice.pause(); URL.revokeObjectURL(voice.src); } voice = new Audio(URL.createObjectURL(f)); ui.status.textContent = `Voiceover loaded: ${f.name}. Effects switched to the lighter mix.`; if (playing) startAudio(); });
+(async () => {
+  try { await Promise.all(['800 100px "Bricolage Grotesque"', '700 60px Caveat', '700 30px "DM Sans"', '500 20px "DM Sans"'].map((f) => document.fonts.load(f, 'AaZz09'))); await document.fonts.ready; } catch (e) {}
+  now = 6.8; show(); window.__ready = true;
+  requestAnimationFrame((ts) => { lastTick = ts; loop(ts); });
+})();
+</script>
+</body>
+</html>

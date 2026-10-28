@@ -1,0 +1,20 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../lib/site';
+---
+<Base title="Privacy" description={`How ${SITE.name} handles your data: almost not at all.`}>
+  <section class="page-head wrap">
+    <h1 data-rise>Privacy</h1>
+    <p data-rise style="--i:1">No accounts, no cookies, and what you type stays in your browser.</p>
+  </section>
+  <section class="prose wrap">
+    <h2>What you type</h2>
+    <p>Topics, scripts and descriptions you enter are used only to assemble the prompt in your browser. They are never sent to our server.</p>
+    <h2>Analytics</h2>
+    <p>We count page visits with cookie-free analytics that store no personal data and don't track you across sites.</p>
+    <h2>Claude</h2>
+    <p>When you paste a prompt into Claude, Anthropic's own privacy policy applies to that chat.</p>
+    <h2>Contact</h2>
+    <p>Questions: <a href={`mailto:${SITE.contact}`}>{SITE.contact}</a>.</p>
+  </section>
+</Base>

@@ -1,0 +1,21 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../lib/site';
+---
+<Base title="License" description={`What you can do with ${SITE.name} styles and the videos you make.`}>
+  <section class="page-head wrap">
+    <h1 data-rise>License</h1>
+    <p data-rise style="--i:1">Use the styles freely. What you make is yours.</p>
+  </section>
+  <section class="prose wrap">
+    <h2>The videos you make</h2>
+    <p>They are yours. Use them anywhere, including commercially: social posts, ads, client work, courses. No credit is required, though a mention is always appreciated.</p>
+    <h2>The styles and prompts</h2>
+    <p>You may use, change and adapt any style for your own videos and your own projects.</p>
+    <p>Please don't resell or republish the prompts or reference files themselves, alone or as a pack. Link to {SITE.name} instead.</p>
+    <h2>What's in your video</h2>
+    <p>You're responsible for the words, facts, voices and music you put into a video. Use only music and recordings you have the rights to.</p>
+    <h2>No warranty</h2>
+    <p>The styles are provided as they are. Results depend on Claude and on your prompt; check your video before you publish it.</p>
+  </section>
+</Base>

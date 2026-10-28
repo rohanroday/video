@@ -1,0 +1,25 @@
+{
+  "name": "cutframe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A free library of original animation styles drawn in code, run in Claude.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "npm run check:styles && astro build",
+    "preview": "astro preview",
+    "check:styles": "node scripts/check-styles.mjs",
+    "previews": "node scripts/render-previews.mjs",
+    "test:builder": "node scripts/test-builder.mjs"
+  },
+  "dependencies": {
+    "@astrojs/preact": "^6.1.1",
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource/dm-sans": "^5.3.0",
+    "astro": "^7.4.2",
+    "preact": "^11.1.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.16.0"
+  }
+}
