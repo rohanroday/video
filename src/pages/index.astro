@@ -1,17 +1,18 @@
 ---
 import Base from '../layouts/Base.astro';
-import { STYLES, frameUrl } from '../data/styles';
+import { STYLES } from '../data/styles';
 import { SITE } from '../lib/site';
 import Follow from '../components/Follow.astro';
 
 const no = (n: number) => String(n).padStart(2, '0');
 const latest = STYLES[STYLES.length - 1];
 const nextIssue = no(latest.issue + 1);
+// pictures come from scripts/render-steps.mjs: real captures of this site for 1-3, a drawn chat for 4
 const steps = [
-  { title: 'Pick an issue', text: 'Each issue is one animation style, printed with its sample video and every frame.', frame: 4 },
-  { title: 'Write your topic', text: 'A topic, a few bullet points or your whole script. Add your own voiceover if you have one.', frame: 6 },
-  { title: 'Copy one prompt', text: 'One button copies the style rules, your topic and the full animation code.', frame: 13 },
-  { title: 'Paste it into Claude', text: 'Claude sketches a storyboard, you approve it, then it draws every frame with its sound.', frame: 23 },
+  { title: 'Pick an issue', text: 'Each issue is one animation style, printed with its sample video and every frame.', img: '/steps/step-1.jpg', alt: 'The Paper Cut issue card on the shelf' },
+  { title: 'Write your topic', text: 'A topic, a few bullet points or your whole script. Add your own voiceover if you have one.', img: '/steps/step-2.jpg', alt: 'The order slip with "How to start running" typed in, and its paper title card' },
+  { title: 'Copy one prompt', text: 'One button copies the style rules, your topic and the full animation code.', img: '/steps/step-3.jpg', alt: 'The Copy button just after a copy, with the stamped "Copied 58 KB" print' },
+  { title: 'Paste it into Claude', text: 'Claude sketches a storyboard, you approve it, then it draws every frame with its sound.', img: '/steps/step-4.jpg', alt: 'Illustration of a chat: the pasted prompt, then a four-beat storyboard with an Approve button' },
 ];
 const faq = [
   ['What is this?', `${SITE.name} is a free library of animation styles. Each issue is a complete animation drawn in code, with its own synthesized sound, plus the rules for rebuilding it around any topic.`],
@@ -83,7 +84,7 @@ const faq = [
     <ol class="run-steps">
       {steps.map((s, i) => (
         <li data-feed style={`--i:${i}`}>
-          <img src={frameUrl(latest, s.frame)} width="960" height="540" alt="" loading="lazy" />
+          <img src={s.img} width="1200" height="900" alt={s.alt} loading="lazy" />
           <h3>{s.title}</h3>
           <p>{s.text}</p>
         </li>
