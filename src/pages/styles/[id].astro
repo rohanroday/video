@@ -8,98 +8,133 @@ export function getStaticPaths() {
 }
 const { style } = Astro.props as { style: Style };
 const base = `/styles/${style.id}`;
+const issueNo = String(style.issue).padStart(2, '0');
 ---
-<Base title={style.name} description={style.tagline} image={`${base}/media/poster.jpg`}>
-  <section class="intro wrap" aria-labelledby="style-title">
-    <div>
-      <h1 id="style-title" data-rise>{style.name}</h1>
-      <p class="tagline" data-rise style="--i:1">{style.tagline}</p>
+<Base title={`Issue ${issueNo}: ${style.name}`} description={style.tagline} image={`${base}/media/poster.jpg`}>
+  <!-- the issue reprinted in its own inks; the masthead stays put -->
+  <section class="issue-cover halftone" style={`--field:${style.inks.field}; --echo:${style.inks.echo}`} aria-labelledby="style-title">
+    <div class="ic-head">
+      <h1 id="style-title"><span class="over" data-echo={style.name}>{style.name}</span></h1>
+      <p class="ic-tag">{style.tagline}</p>
     </div>
-    <dl class="facts small" data-rise style="--i:2">
-      <div><dt class="muted">Family</dt><dd>{style.family}</dd></div>
-      <div><dt class="muted">Demo length</dt><dd>{style.duration} seconds</dd></div>
-      <div><dt class="muted">Type</dt><dd>{style.fonts.join(', ')}</dd></div>
-      <div><dt class="muted">Sound</dt><dd>Synthesized in code</dd></div>
+    <figure class="ic-print" data-feed>
+      <span class="staple s1" aria-hidden="true"></span><span class="staple s2" aria-hidden="true"></span>
+      <div class="ic-screen">
+        <video src={`${base}/media/sample.mp4`} poster={`${base}/media/poster.jpg`} width="1280" height="720" playsinline preload="metadata" data-video></video>
+        <button type="button" class="play" data-play aria-label={`Play the ${style.name} sample with sound`}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>
+          <span>Play with sound</span>
+        </button>
+      </div>
+      <figcaption>Sound on. Or <a href={`${base}/reference.html`} target="_blank" rel="noopener">play it live</a>, drawn frame by frame in your browser.</figcaption>
+    </figure>
+    <dl class="ic-facts small">
+      <div><dt>Issue</dt><dd>{issueNo}, out now</dd></div>
+      <div><dt>Family</dt><dd>{style.family}</dd></div>
+      <div><dt>Demo</dt><dd>{style.duration} seconds</dd></div>
+      <div><dt>Type</dt><dd>{style.fonts.join(', ')}</dd></div>
+      <div><dt>Sound</dt><dd>Synthesized in code</dd></div>
     </dl>
   </section>
 
-  <section class="player wrap" aria-label={`${style.name} sample`}>
-    <video src={`${base}/media/sample.mp4`} poster={`${base}/media/poster.jpg`} width="1280" height="720" controls playsinline preload="metadata"></video>
-    <p class="small muted">Sound on. Or <a href={`${base}/reference.html`} target="_blank" rel="noopener">play the live version</a>, drawn frame by frame in your browser.</p>
+  <!-- the order slip: where the visitor pulls their own print -->
+  <section id="prompt" class="order wrap" aria-labelledby="order-title">
+    <div class="order-head">
+      <h2 id="order-title" data-feed>Make it yours</h2>
+      <p data-feed style="--i:1">Write what your video is about, choose the voiceover, and copy one prompt into a new Claude chat.</p>
+    </div>
+    <div class="slip">
+      <PromptBuilder client:load styleId={style.id} styleName={style.name} />
+    </div>
   </section>
 
   <section class="sheet wrap" aria-labelledby="sheet-title">
-    <h2 id="sheet-title" class="sheet-title">Every frame</h2>
+    <h2 id="sheet-title" data-feed>Every frame</h2>
     <div class="sheet-grid">
-      {Array.from({ length: style.frames }, (_, i) => <img src={frameUrl(style, i)} width="960" height="540" alt="" loading="lazy" data-rise style={`--i:${i % 10}`} />)}
+      {Array.from({ length: style.frames }, (_, i) => <img src={frameUrl(style, i)} width="960" height="540" alt="" loading="lazy" />)}
     </div>
   </section>
 
-  <section class="about-style wrap" aria-labelledby="look-title">
-    <div data-rise>
+  <section class="notes wrap" aria-labelledby="look-title">
+    <div data-feed>
       <h2 id="look-title">The look</h2>
       <p>{style.look}</p>
     </div>
-    <div data-rise style="--i:1">
+    <div data-feed style="--i:1">
       <h2>How it tells a story</h2>
       <p>{style.howItExplains}</p>
     </div>
-    <div data-rise style="--i:2">
+    <div data-feed style="--i:2">
       <h2>Good for</h2>
       <ul>{style.bestFor.map((b) => <li>{b}</li>)}</ul>
-      <div class="swatches" aria-label="Palette">{style.palette.map((c) => <span style={`background:${c}`} title={c}></span>)}</div>
+      <div class="inks" aria-label="Palette">{style.palette.map((c) => <span style={`background:${c}`} title={c}></span>)}</div>
     </div>
   </section>
 
-  <section id="prompt" class="make wrap" aria-labelledby="make-title">
-    <h2 id="make-title" data-rise>Make it yours</h2>
-    <p class="make-lede" data-rise style="--i:1">Type what your video is about, choose the voiceover mode, and copy one prompt into a new Claude chat.</p>
-    <PromptBuilder client:visible styleId={style.id} styleName={style.name} />
-  </section>
-
-  <section class="steps wrap" aria-labelledby="steps-title">
-    <h2 id="steps-title" data-rise>After you paste it</h2>
+  <section class="after wrap" aria-labelledby="after-title">
+    <h2 id="after-title" data-feed>After you paste it</h2>
     <ol>
-      <li data-rise>Claude reads the style and writes a storyboard: one still for every beat, with the words and sounds listed underneath.</li>
-      <li data-rise style="--i:1">You approve it or ask for changes in plain words.</li>
-      <li data-rise style="--i:2">Claude builds the full animation. It plays in the chat with its sound.</li>
-      <li data-rise style="--i:3">For an MP4, run the same prompt in Claude Code, which renders every frame and the sound into a video file.</li>
+      <li data-feed><b>Storyboard.</b> Claude reads the style and sketches one still for every beat, with the words and sounds listed underneath.</li>
+      <li data-feed style="--i:1"><b>Approve.</b> Say yes, or ask for changes in plain words.</li>
+      <li data-feed style="--i:2"><b>Build.</b> Claude draws the full animation. It plays in the chat with its sound.</li>
+      <li data-feed style="--i:3"><b>Export.</b> For an MP4, run the same prompt in Claude Code, which renders every frame and the sound into a video file.</li>
     </ol>
   </section>
 </Base>
 
-<style>
-  .intro { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 40px; padding-top: 6vh; }
-  .intro h1 { font-size: var(--t-display); letter-spacing: -0.045em; line-height: .9; }
-  .tagline { margin-top: 24px; font-size: var(--t-h3); max-width: 34ch; line-height: 1.35; }
-  .facts { display: grid; grid-template-columns: auto auto; gap: 10px 28px; margin: 0; }
-  .facts div { display: contents; }
-  .facts dd { margin: 0; }
-  @media (max-width: 760px) { .intro { grid-template-columns: 1fr; } }
+<script>
+  // the drawn play button starts the sample with sound, then hands over to the native controls
+  const video = document.querySelector<HTMLVideoElement>('[data-video]');
+  const play = document.querySelector<HTMLButtonElement>('[data-play]');
+  if (video && play) {
+    play.addEventListener('click', () => { video.controls = true; play.hidden = true; video.play().catch(() => {}); });
+    video.addEventListener('play', () => { video.controls = true; play.hidden = true; });
+  }
+</script>
 
-  .player { margin-top: 56px; }
-  .player video { width: 100%; height: auto; background: #000; }
-  .player p { margin-top: 12px; }
+<style>
+  .issue-cover { background-color: var(--field); margin-top: -2px; padding: clamp(24px, 4vh, 48px) var(--m) clamp(40px, 6vh, 72px); display: grid; grid-template-columns: 5fr 7fr; grid-template-rows: auto auto; gap: 28px clamp(28px, 4vw, 64px); align-items: center; }
+  .ic-head h1 { font-size: clamp(88px, 13vw, 230px); line-height: .78; margin: 0 0 24px -0.03em; }
+  .ic-tag { font: 700 var(--t-h3)/1.2 var(--display); font-stretch: 90%; max-width: 22ch; }
+  .ic-print { margin: 0; grid-row: 1 / span 2; grid-column: 2; background: #fbf8f1; padding: 12px 12px 0; box-shadow: var(--shadow-print); transform: rotate(1.2deg); position: relative; }
+  .ic-screen { position: relative; }
+  .ic-print video { width: 100%; height: auto; aspect-ratio: 16 / 9; background: var(--paper-2); }
+  .ic-print figcaption { padding: 10px 2px 12px; font-size: var(--t-small); }
+  /* one drawn play control in the style's own ink; native controls appear only once it plays */
+  /* lower-left inside the picture, clear of the sample's title; ink text on the red keeps 5.9:1 */
+  .play { position: absolute; left: 16px; bottom: 16px; transform: rotate(-2deg); display: inline-flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 22px 0 16px; border: 0; border-radius: 2px; background: var(--echo); color: var(--ink); font: 800 24px/1 var(--display); font-stretch: 80%; text-transform: uppercase; cursor: pointer; box-shadow: var(--shadow-print); transition: transform .3s var(--ease); }
+  .play svg { width: 26px; height: 26px; }
+  .play:hover { transform: rotate(0deg) scale(1.04); }
+  .play:active { transform: scale(.97); }
+  @media (max-width: 560px) { .play { left: 10px; bottom: 10px; min-height: 46px; font-size: 20px; padding: 0 16px 0 12px; } }
+  .play[hidden] { display: none; }
+  .ic-facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; margin: 0; align-self: end; }
+  .ic-facts div { display: contents; }
+  .ic-facts dt { font-weight: 700; }
+  .ic-facts dd { margin: 0; }
+  @media (max-width: 900px) { .issue-cover { grid-template-columns: 1fr; } .ic-print { grid-row: auto; grid-column: 1; transform: rotate(.6deg); } }
+
+  .order { margin-top: var(--gap-section); }
+  .order-head { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: end; margin-bottom: 44px; }
+  .order-head p { font-size: var(--t-h3); line-height: 1.3; max-width: 34ch; }
+  @media (max-width: 900px) { .order-head { grid-template-columns: 1fr; } }
 
   .sheet { margin-top: var(--gap-section); }
-  .sheet-title { font-size: var(--t-h3); margin-bottom: 20px; }
-  .sheet-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-  .sheet-grid img { height: 112px; width: auto; aspect-ratio: 16 / 9; object-fit: cover; transition: transform .25s var(--ease); }
-  .sheet-grid img:hover { transform: scale(1.06); }
-  @media (max-width: 760px) { .sheet-grid img { height: 72px; } }
+  .sheet h2 { margin-bottom: 28px; }
+  .sheet-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .sheet-grid img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
+  .sheet-grid img:hover { transform: scale(1.08) rotate(-1deg); position: relative; z-index: 2; box-shadow: var(--shadow-print); }
+  @media (max-width: 760px) { .sheet-grid { grid-template-columns: repeat(3, 1fr); } }
 
-  .about-style { display: grid; grid-template-columns: 5fr 5fr 3fr; gap: 56px; margin-top: var(--gap-section); }
-  .about-style h2 { font-size: var(--t-h3); margin-bottom: 14px; }
-  .about-style ul { margin: 0; padding-left: 1.1em; }
-  .swatches { display: flex; margin-top: 24px; }
-  .swatches span { width: 36px; height: 36px; }
-  @media (max-width: 900px) { .about-style { grid-template-columns: 1fr; gap: 40px; } }
+  .notes { display: grid; grid-template-columns: 5fr 5fr 3fr; gap: clamp(28px, 4vw, 56px); margin-top: var(--gap-section); }
+  .notes h2 { font-size: clamp(36px, 3.6vw, 56px); margin-bottom: 14px; }
+  .notes ul { margin: 0; padding-left: 1.1em; }
+  .inks { display: flex; margin-top: 24px; }
+  .inks span { width: 40px; height: 40px; mix-blend-mode: multiply; margin-right: -8px; border-radius: 50%; }
+  @media (max-width: 900px) { .notes { grid-template-columns: 1fr; } }
 
-  .make { margin-top: var(--gap-section); background: var(--surface); padding-block: 72px; }
-  .make-lede { margin: 18px 0 36px; max-width: 46ch; font-size: var(--t-h3); line-height: 1.35; }
-
-  .steps { margin-top: var(--gap-section); display: grid; grid-template-columns: 3fr 1fr 8fr; }
-  .steps h2 { font-size: var(--t-h2); }
-  .steps ol { grid-column: 3; margin: 0; padding-left: 1.2em; display: grid; gap: 16px; max-width: 60ch; }
-  @media (max-width: 900px) { .steps { grid-template-columns: 1fr; gap: 24px; } .steps ol { grid-column: 1; } }
+  .after { margin-top: var(--gap-section); display: grid; grid-template-columns: 4fr 8fr; gap: 40px; }
+  .after ol { margin: 0; padding-left: 1.3em; display: grid; gap: 16px; max-width: 62ch; }
+  .after b { font-weight: 700; }
+  @media (max-width: 900px) { .after { grid-template-columns: 1fr; } }
 </style>

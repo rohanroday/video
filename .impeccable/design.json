@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T00:00:00Z",
+  "title": "Design System: Cutframe",
+  "extensions": {
+    "colorMeta": {
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "#f4f0e6", "tonalRamp": ["#2a2720", "#4a4640", "#6e685d", "#958e80", "#bcb4a4", "#ddd6c6", "#ebe5d6", "#f4f0e6"] },
+      "paper-shade": { "role": "neutral", "displayName": "Paper Shade", "canonical": "#ebe5d6", "tonalRamp": ["#2a2720", "#4a4640", "#6e685d", "#958e80", "#bcb4a4", "#d6cfbe", "#ebe5d6", "#f6f2ea"] },
+      "print-stock": { "role": "neutral", "displayName": "Print Stock", "canonical": "#fbf8f1", "tonalRamp": ["#2b2924", "#4c4943", "#706c63", "#979288", "#bfbab0", "#e0dcd2", "#f1ede4", "#fbf8f1"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#1a1a1a", "tonalRamp": ["#1a1a1a", "#333333", "#4d4d4d", "#6b6b6b", "#8c8c8c", "#b0b0b0", "#d4d4d4", "#f0f0f0"] },
+      "ink-soft": { "role": "neutral", "displayName": "Ink Soft", "canonical": "#4a4640", "tonalRamp": ["#1f1d1a", "#33302b", "#4a4640", "#66615a", "#857f77", "#a8a29a", "#ccc7c0", "#eeebe6"] },
+      "ink-fine": { "role": "neutral", "displayName": "Fine Print Grey", "canonical": "#b8b1a4", "tonalRamp": ["#2a2722", "#47433b", "#665f54", "#877f71", "#a89f90", "#b8b1a4", "#d6d0c5", "#f2efe9"] },
+      "fluoro-pink": { "role": "secondary", "displayName": "Fluorescent Pink", "canonical": "#ff48b0", "tonalRamp": ["#3d0425", "#6b0b43", "#9a1563", "#c92384", "#ff48b0", "#ff7cc6", "#ffb0dc", "#ffe1f1"] },
+      "pink-deep": { "role": "secondary", "displayName": "Pink Deep", "canonical": "#b81f76", "tonalRamp": ["#3d0425", "#6b0b43", "#9a1563", "#b81f76", "#e04a9e", "#f27cbf", "#f9b2da", "#fde3f1"] },
+      "riso-blue": { "role": "primary", "displayName": "Riso Blue (action ink)", "canonical": "#0078bf", "tonalRamp": ["#00182b", "#003152", "#005a91", "#0078bf", "#3a9ad6", "#74b9e4", "#acd5f0", "#e0f0fa"] },
+      "blue-deep": { "role": "primary", "displayName": "Blue Deep", "canonical": "#005a91", "tonalRamp": ["#00182b", "#003152", "#005a91", "#0078bf", "#3a9ad6", "#74b9e4", "#acd5f0", "#e0f0fa"] },
+      "blue-lift": { "role": "primary", "displayName": "Blue Lift (hover)", "canonical": "#0a86d1", "tonalRamp": ["#00182b", "#003152", "#005a91", "#0a86d1", "#3a9ad6", "#74b9e4", "#acd5f0", "#e0f0fa"] },
+      "riso-yellow": { "role": "tertiary", "displayName": "Riso Yellow", "canonical": "#ffe800", "tonalRamp": ["#2e2a00", "#575000", "#857a00", "#b3a400", "#e0ce00", "#ffe800", "#fff280", "#fffbd6"] },
+      "bright-red": { "role": "tertiary", "displayName": "Bright Red (issue echo)", "canonical": "#f15060", "tonalRamp": ["#3a0a0f", "#66141e", "#94202d", "#c3303f", "#f15060", "#f6838e", "#fab4bb", "#fde3e5"] }
+    },
+    "typographyMeta": {
+      "giant": { "displayName": "Giant", "purpose": "The CUTFRAME cover title only, blue overprinted on pink with a yellow echo." },
+      "display": { "displayName": "Display", "purpose": "Page-head h1 on issue, text and Make your own pages; colophon wordmark register." },
+      "headline": { "displayName": "Headline", "purpose": "Section h2, uppercase condensed." },
+      "title": { "displayName": "Title", "purpose": "h3, field labels, FAQ questions." },
+      "lede": { "displayName": "Lede", "purpose": "One-line tagline under a head, 22-30ch." },
+      "body": { "displayName": "Body", "purpose": "Running text, max 52-64ch." },
+      "label": { "displayName": "Label", "purpose": "Nav, captions, facts lists, footer." }
+    },
+    "shadows": [
+      { "name": "print-lift", "value": "0 1px 1px rgba(26,26,26,.12), 0 10px 24px -8px rgba(26,26,26,.28)", "purpose": "Every printed sheet: framed video, spread, order slip, tilted frames, title card, closing print." },
+      { "name": "contact-frame", "value": "0 1px 2px rgba(0,0,0,.2)", "purpose": "Resting thumbnails on the yellow contact sheet." }
+    ],
+    "motion": [
+      { "name": "ease-print", "value": "cubic-bezier(.16, 1, .3, 1)", "purpose": "All transitions and the feed/pull motions." },
+      { "name": "feed", "value": "clip-path inset(0 0 100% 0) -> inset(0 0 -2% 0), translateY(-14px) -> 0, 0.9s, stagger 90ms", "purpose": "Sections print in once on scroll; only with prefers-reduced-motion: no-preference and JS." },
+      { "name": "print-pull", "value": "keyframes pull, 0.9s: clip reveal, drop 4px, settle at rotate(-1deg)", "purpose": "The Copied stamp feeding out of the order slip; static under reduced motion." }
+    ],
+    "breakpoints": [
+      { "name": "xs", "value": "480px" },
+      { "name": "sm", "value": "560px" },
+      { "name": "md", "value": "760px" },
+      { "name": "nav", "value": "820px" },
+      { "name": "lg", "value": "900px" },
+      { "name": "xl", "value": "1000px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Action Button",
+      "kind": "button",
+      "refersTo": "button-action",
+      "description": "The only blue-filled surface: anything that gets or copies an issue.",
+      "html": "<button class=\"ds-btn\">Get Issue 01: Paper Cut</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 52px; padding: 0 26px; border: 0; border-radius: 2px; background: #0078bf; color: #fff; font: 700 18px/1 'Schibsted Grotesk Variable', system-ui, sans-serif; cursor: pointer; box-shadow: 0 10px 22px -10px rgba(0,60,100,.6); transition: transform .25s cubic-bezier(.16,1,.3,1), background-color .2s; } .ds-btn:hover { background: #0a86d1; transform: translateY(-2px); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 3px solid #0078bf; outline-offset: 3px; }"
+    },
+    {
+      "name": "Paper Button / Toggle",
+      "kind": "button",
+      "refersTo": "button-paper",
+      "description": "Secondary actions and the voiceover toggle; pressed state inverts to ink.",
+      "html": "<div style=\"display:flex;gap:8px\"><button class=\"ds-btn-paper\" aria-pressed=\"true\">No voiceover</button><button class=\"ds-btn-paper\" aria-pressed=\"false\">With voiceover</button></div>",
+      "css": ".ds-btn-paper { display: inline-flex; align-items: center; min-height: 44px; padding: 0 26px; border: 0; border-radius: 2px; background: #f4f0e6; color: #1a1a1a; box-shadow: inset 0 0 0 2px #1a1a1a; font: 700 18px/1 'Schibsted Grotesk Variable', system-ui, sans-serif; cursor: pointer; transition: background-color .2s; } .ds-btn-paper:hover { background: #fff; } .ds-btn-paper[aria-pressed=\"true\"] { background: #1a1a1a; color: #f4f0e6; } .ds-btn-paper:focus-visible { outline: 3px solid #0078bf; outline-offset: 3px; }"
+    },
+    {
+      "name": "Order Slip Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Underlined paper field with a condensed uppercase label and pink caret.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Your topic, script or bullet points</span><textarea rows=\"3\" placeholder=\"How to start running\"></textarea></label>",
+      "css": ".ds-field { display: grid; gap: 10px; } .ds-field-label { font: 800 22px/1 'Bricolage Grotesque Variable', 'Arial Narrow', sans-serif; font-stretch: 80%; text-transform: uppercase; color: #1a1a1a; } .ds-field textarea { width: 100%; font: 400 18px/1.5 'Schibsted Grotesk Variable', system-ui, sans-serif; color: #1a1a1a; background: #f4f0e6; border: 0; border-bottom: 2px solid #1a1a1a; border-radius: 0; padding: 12px 14px; caret-color: #ff48b0; transition: background-color .2s; } .ds-field textarea::placeholder { color: #7a7368; } .ds-field textarea:focus { background: #fff; outline: none; box-shadow: 0 0 0 3px #0078bf; }"
+    },
+    {
+      "name": "Masthead",
+      "kind": "nav",
+      "refersTo": "masthead",
+      "description": "Wordmark left, quiet links right, blue Get Issue button always visible.",
+      "html": "<header class=\"ds-bar\"><a class=\"ds-wordmark\" href=\"#\">Cutframe</a><nav><a href=\"#\">Issues</a><a href=\"#\">How it works</a><a class=\"ds-bar-btn\" href=\"#\">Get Issue 01</a></nav></header>",
+      "css": ".ds-bar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 18px 24px; background: #f4f0e6; color: #1a1a1a; } .ds-wordmark { font: 800 26px/1 'Bricolage Grotesque Variable', 'Arial Narrow', sans-serif; font-stretch: 75%; text-transform: uppercase; text-decoration: none; color: inherit; } .ds-bar nav { display: flex; align-items: center; gap: 26px; font: 600 15px/1 'Schibsted Grotesk Variable', system-ui, sans-serif; } .ds-bar nav a { color: inherit; text-decoration: none; text-underline-offset: .2em; text-decoration-thickness: 2px; } .ds-bar nav a:hover { text-decoration: underline; text-decoration-color: #0078bf; } .ds-bar nav .ds-bar-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 2px; background: #0078bf; color: #fff; font-weight: 700; } .ds-bar nav .ds-bar-btn:hover { background: #0a86d1; text-decoration: none; } .ds-bar a:focus-visible { outline: 3px solid #0078bf; outline-offset: 3px; }"
+    },
+    {
+      "name": "Ink Field Head with Overprint",
+      "kind": "custom",
+      "refersTo": "page-head",
+      "description": "Full-bleed ink field with halftone; display words overprinted by a misregistered echo.",
+      "html": "<section class=\"ds-field-head\"><h1><span class=\"ds-over\" data-echo=\"Paper Cut\">Paper Cut</span></h1><p>Coloured paper, torn strips, masking tape and a rubber stamp.</p></section>",
+      "css": ".ds-field-head { background-color: #ffe800; background-image: radial-gradient(rgba(26,26,26,.16) 1.1px, transparent 1.4px); background-size: 7px 7px; padding: 40px 32px 56px; color: #1a1a1a; } .ds-field-head h1 { margin: 0; font: 800 96px/.8 'Bricolage Grotesque Variable', 'Arial Narrow', sans-serif; font-stretch: 75%; letter-spacing: -0.01em; text-transform: uppercase; } .ds-over { position: relative; display: inline-block; isolation: isolate; } .ds-over::after { content: attr(data-echo); position: absolute; left: .045em; right: -.045em; top: .03em; z-index: -1; color: #f15060; mix-blend-mode: multiply; } .ds-field-head p { margin: 24px 0 0; font: 700 24px/1.2 'Bricolage Grotesque Variable', sans-serif; font-stretch: 90%; max-width: 22ch; }"
+    },
+    {
+      "name": "Printed Frame",
+      "kind": "card",
+      "refersTo": "printed-frame",
+      "description": "Product media as a stapled, tilted print on print stock.",
+      "html": "<figure class=\"ds-print\"><span class=\"ds-staple\" style=\"left:18%;transform:rotate(-3deg)\"></span><span class=\"ds-staple\" style=\"right:18%;transform:rotate(2deg)\"></span><div class=\"ds-print-img\"></div><figcaption><span>Issue 01 · Paper Cut</span><span class=\"ds-pink\">made from one prompt</span></figcaption></figure>",
+      "css": ".ds-print { margin: 16px; position: relative; background: #fbf8f1; padding: 12px 12px 0; box-shadow: 0 1px 1px rgba(26,26,26,.12), 0 10px 24px -8px rgba(26,26,26,.28); transform: rotate(-1.5deg); max-width: 420px; } .ds-print-img { aspect-ratio: 16/9; background: #ebe5d6; } .ds-staple { position: absolute; top: -4px; width: 34px; height: 5px; background: #1a1a1a; border-radius: 1px; } .ds-print figcaption { display: flex; justify-content: space-between; gap: 12px; padding: 10px 2px 12px; font: 600 15px/1.3 'Schibsted Grotesk Variable', system-ui, sans-serif; color: #1a1a1a; } .ds-pink { color: #b81f76; }"
+    },
+    {
+      "name": "Order Slip",
+      "kind": "card",
+      "refersTo": "order-slip",
+      "description": "Perforated print-stock sheet holding the prompt builder.",
+      "html": "<div class=\"ds-slip\"><p>Your topic goes here.</p></div>",
+      "css": ".ds-slip { position: relative; margin-top: 16px; background: #fbf8f1; box-shadow: 0 1px 1px rgba(26,26,26,.12), 0 10px 24px -8px rgba(26,26,26,.28); padding: 32px; font: 400 18px/1.55 'Schibsted Grotesk Variable', system-ui, sans-serif; color: #1a1a1a; } .ds-slip::before { content: ''; position: absolute; left: 0; right: 0; top: -9px; height: 10px; background: radial-gradient(circle at 6px 0, transparent 6px, #fbf8f1 6.5px) 0 0 / 14px 10px repeat-x; } .ds-slip p { margin: 0; }"
+    },
+    {
+      "name": "Issue Strip",
+      "kind": "custom",
+      "refersTo": "issue-strip",
+      "description": "Black band listing issues at the foot of the cover.",
+      "html": "<ol class=\"ds-strip\"><li><b>Issue 01</b> Paper Cut <span>out now</span></li><li class=\"ds-next\"><b>Issue 02</b> <span>next month</span></li></ol>",
+      "css": ".ds-strip { list-style: none; margin: 0; padding: 14px 24px; display: flex; flex-wrap: wrap; gap: 8px 40px; background: #1a1a1a; color: #f4f0e6; font: 400 15px/1.4 'Schibsted Grotesk Variable', system-ui, sans-serif; } .ds-strip b { font: 800 18px/1 'Bricolage Grotesque Variable', sans-serif; font-stretch: 80%; text-transform: uppercase; margin-right: 8px; } .ds-strip span { color: #ffe800; margin-left: 8px; } .ds-strip .ds-next, .ds-strip .ds-next span { color: #b8b1a4; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Riso Zine Print Shop",
+    "overview": "Cutframe is a small print shop that runs off one zine issue per animation style. Every page is printed in two or three riso drums on warm uncoated stock: a fluorescent field, a heavy condensed grotesk overprinted on it with a slightly off-register echo, and the actual product (sample video, frames, title card) pasted down as stapled, slightly tilted prints with a soft lifted shadow. Copying a prompt is \"pulling your own print\".\n\nThe system is loud at the head and quiet in the body. One ink owns each page head as a full-bleed field (pink on home and Make your own, yellow on text pages, the style's own ink pair on its issue page), then the page falls back to paper and ink with generous section gaps, and closes on a black colophon. Blue is the action ink: it fills buttons and rings focus, and appears otherwise only as overprinted type and link-hover underline.",
+    "keyCharacteristics": [
+      "Full-bleed fluorescent ink field owns the first viewport of every page.",
+      "Huge uppercase condensed display (Bricolage at width 75, weight 800) with a multiply-blended misregistered echo.",
+      "Product media presented as physical prints: off-white stock border, staples, 1–2deg rotation, soft lifted shadow.",
+      "Faint fibre-grain noise over the whole page and halftone dot screens on ink fields.",
+      "Blue-filled surfaces mean \"act\"; nothing decorative is blue-filled.",
+      "Black colophon footer with the wordmark set giant and a pink full stop."
+    ],
+    "rules": [
+      { "name": "The Action Ink Rule", "body": "Blue fills only things you can press. Blue as overprinted display type or a focus ring is native to the world; a blue-filled card, badge, band or decoration is not.", "section": "colors" },
+      { "name": "The One Field Rule", "body": "Each page head is owned by exactly one full-bleed ink field; the rest of the page is paper. A second large field (contact sheet, closing print) appears only once further down, never adjacent to the first.", "section": "colors" },
+      { "name": "The Reprint Rule", "body": "Each style's issue page reprints the head in that style's ink pair (inks.field as the field, inks.echo as the display echo and its play control), while the masthead, buttons and body stay fixed. Blue stays the action ink on every reprint.", "section": "colors" },
+      { "name": "The Overprint Rule", "body": "Display type set in a field gets a second impression of the same words in the echo ink, offset (0.045em, 0.03em) and multiplied behind it. One echo per heading; body text never overprints.", "section": "typography" },
+      { "name": "The Uppercase Display Rule", "body": "All h1–h3 are uppercase, condensed, weight 800, tight leading. Body, buttons and labels stay sentence case.", "section": "typography" },
+      { "name": "The Paper Lift Rule", "body": "Shadow means \"this is a separate printed sheet\". Nav, fields and strips never cast one; buttons carry only a soft ink-tinted lift that grows on hover.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do give each page head one full-bleed ink field with halftone, and let the body return to paper.",
+      "Do overprint display headings with one echo in the field's partner ink, multiplied, offset ~0.045em.",
+      "Do present every product image or video as a print: print-stock border, print lift shadow, 1–2deg tilt, staples where it is the hero.",
+      "Do reprint an issue page in its own inks pair and keep the masthead, blue actions and body fixed.",
+      "Do use pink-deep, not raw pink, when pink carries text on paper."
+    ],
+    "donts": [
+      "Don't fill any non-action surface (card, band, badge, decoration) with blue.",
+      "Don't put two full-bleed ink fields back to back or use more than three drums on one screen.",
+      "Don't round corners beyond the 2px trim or use pill buttons.",
+      "Don't cast shadows from nav, fields or strips; shadow belongs to printed sheets and buttons.",
+      "Don't use a dark page, centred glow hero or icon feature cards; the page is paper, not a screen."
+    ]
+  }
+}

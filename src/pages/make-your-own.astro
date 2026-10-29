@@ -4,30 +4,27 @@ import CloneBuilder from '../components/CloneBuilder';
 import { STYLES, frameUrl } from '../data/styles';
 const from = STYLES[0];
 ---
-<Base title="Make your own style" description="Turn one to three screenshots of a look you like into a new animation style for Claude.">
-  <section class="head-split wrap">
-    <div class="page-head">
-      <h1 data-rise>Make your own style</h1>
-      <p data-rise style="--i:1">Give Claude a few screenshots of a look you love. It builds a new style, sound included.</p>
+<Base title="Make your own style" description="Turn one to three screenshots of a look you love into a new animation style for Claude.">
+  <section class="own-cover halftone" aria-labelledby="own-title">
+    <div class="oc-text">
+      <h1 id="own-title"><span class="over" data-echo="Make your own" style="--echo:var(--yellow)">Make your own</span></h1>
+      <p>Give Claude one to three screenshots of a look you love. It builds a new style on the {from.name} engine, sound included.</p>
     </div>
-    <video src={`/styles/${from.id}/media/sample.mp4`} poster={`/styles/${from.id}/media/poster.jpg`} width="1280" height="720" autoplay muted loop playsinline aria-label={`The ${from.name} engine your new style is built on`} data-rise style="--i:2"></video>
+    <div class="oc-pile" aria-hidden="true">
+      {[2, 12, 22].map((f, i) => <img src={frameUrl(from, f)} width="960" height="540" alt="" class={`p${i}`} />)}
+    </div>
   </section>
 
-  <section class="contact wrap" aria-label={`Frames from ${from.name}, the starting style`}>
-    {[2, 7, 12, 17, 22, 27].map((f, i) => <img src={frameUrl(from, f)} width="960" height="540" alt="" loading="lazy" data-rise style={`--i:${i}`} />)}
-  </section>
-
-  <section class="own wrap" aria-labelledby="own-title">
-    <div>
-      <h2 id="own-title" class="visually-hidden">Build the prompt</h2>
+  <section class="own wrap" aria-labelledby="slip-title">
+    <h2 id="slip-title" class="visually-hidden">Build the prompt</h2>
+    <div class="slip">
       <CloneBuilder client:load from={from.id} />
     </div>
     <ol class="own-steps">
-      <li data-rise><strong>Copy the prompt</strong> and paste it into a new Claude chat.</li>
-      <li data-rise style="--i:1"><strong>Attach your screenshots,</strong> one to three of the look you want, then send.</li>
-      <li data-rise style="--i:2"><strong>Approve one test frame.</strong> Claude explains the engine and draws a single still in the new style before building anything.</li>
-      <li data-rise style="--i:3"><strong>Get the style.</strong> A demo animation plus a style guide you can reuse for any topic.</li>
-      <li data-rise style="--i:4"><img src={frameUrl(from, 20)} width="960" height="540" alt={`The ${from.name} engine the new style starts from`} loading="lazy" /></li>
+      <li data-feed><b>Copy the prompt</b> and paste it into a new Claude chat.</li>
+      <li data-feed style="--i:1"><b>Attach your screenshots,</b> one to three of the look you want, then send.</li>
+      <li data-feed style="--i:2"><b>Approve one test frame.</b> Claude explains the engine and draws a single still in the new style before building anything.</li>
+      <li data-feed style="--i:3"><b>Get the style:</b> a demo animation plus a style guide you can reuse for any topic.</li>
     </ol>
   </section>
 
@@ -35,20 +32,23 @@ const from = STYLES[0];
     <h2 id="own-notes">Good to know</h2>
     <p>Claude takes the look of your screenshots, never their content: no logos, brand names, people or text are copied across.</p>
     <p>The new style keeps the same engine as {from.name}, so it renders the same way and works with the same voiceover option.</p>
-    <p>Your screenshots go to Claude, not to us. This page only builds the prompt.</p>
+    <p>Your screenshots go to Claude, not to this site. This page only builds the prompt.</p>
   </section>
 </Base>
 
 <style>
-  .head-split { display: grid; grid-template-columns: 6fr 5fr; gap: 48px; align-items: end; }
-  .head-split video { width: 100%; height: auto; }
-  .contact { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 40px; }
-  .contact img { height: 112px; width: auto; aspect-ratio: 16 / 9; object-fit: cover; transition: transform .25s var(--ease); }
-  .contact img:hover { transform: scale(1.06); }
-  @media (max-width: 900px) { .head-split { grid-template-columns: 1fr; gap: 28px; } .contact img { height: 72px; } }
-  .own { display: grid; grid-template-columns: 6fr 5fr; gap: 64px; margin-top: 96px; background: var(--surface); padding-block: 64px; }
-  .own-steps { margin: 0; padding-left: 1.2em; display: grid; gap: 18px; align-content: start; }
-  .own-steps li:last-child { list-style: none; margin-left: -1.2em; margin-top: 12px; }
-  .own-steps img { width: 100%; height: auto; }
-  @media (max-width: 900px) { .own { grid-template-columns: 1fr; gap: 40px; } }
+  .own-cover { background-color: var(--pink); margin-top: -2px; padding: clamp(28px, 5vh, 64px) var(--m) clamp(48px, 8vh, 96px); display: grid; grid-template-columns: 6fr 5fr; gap: clamp(28px, 4vw, 64px); align-items: center; overflow: hidden; }
+  .own-cover h1 { font-size: clamp(80px, 12vw, 210px); line-height: .8; color: var(--blue); mix-blend-mode: multiply; }
+  .oc-text p { margin-top: 28px; font: 700 var(--t-h3)/1.25 var(--display); font-stretch: 90%; max-width: 26ch; }
+  .oc-pile { position: relative; aspect-ratio: 4 / 3; }
+  .oc-pile img { position: absolute; width: 74%; height: auto; border: 10px solid #fbf8f1; box-shadow: var(--shadow-print); }
+  .oc-pile .p0 { left: 0; top: 4%; transform: rotate(-6deg); }
+  .oc-pile .p1 { right: 0; top: 22%; transform: rotate(4deg); }
+  .oc-pile .p2 { left: 12%; bottom: 0; transform: rotate(-1deg); }
+  @media (max-width: 900px) { .own-cover { grid-template-columns: 1fr; } }
+
+  .own { display: grid; grid-template-columns: 7fr 5fr; gap: clamp(32px, 5vw, 72px); margin-top: var(--gap-section); align-items: start; }
+  .own-steps { margin: 0; padding-left: 1.3em; display: grid; gap: 18px; }
+  .own-steps b { font-weight: 700; }
+  @media (max-width: 900px) { .own { grid-template-columns: 1fr; } }
 </style>

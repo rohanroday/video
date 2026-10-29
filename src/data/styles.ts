@@ -12,6 +12,9 @@ export interface Style {
   fonts: string[];
   duration: number;
   frames: number; // stills in media/frames, rendered by scripts/render-previews.mjs
+  issue: number;
+  /** the style's own riso ink pair: its page reprints the zine in these (blue stays the action ink) */
+  inks: { field: string; echo: string };
   added: string;
   /** frames worth showing large, by index */
   highlights: { frame: number; name: string; fact: string }[];
@@ -30,6 +33,8 @@ export const STYLES: Style[] = [
     fonts: ['Bricolage Grotesque', 'Caveat', 'DM Sans'],
     duration: 18.5,
     frames: 30,
+    issue: 1,
+    inks: { field: '#FFE800', echo: '#F15060' },
     added: '2026-10-28',
     highlights: [
       { frame: 3, name: 'Title strip', fact: 'torn paper, taped' },

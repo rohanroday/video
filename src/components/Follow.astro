@@ -1,0 +1,12 @@
+---
+// "Follow for the next issue": links when the maker's handles are set in site.ts, plain words until then.
+import { SITE } from '../lib/site';
+interface Props { lead?: string }
+const { lead = 'Follow for Issue 02' } = Astro.props;
+---
+<div class="follow">
+  <b>{lead}</b>
+  {SITE.socials.length
+    ? <p>{SITE.socials.map((s, i) => <>{i > 0 && ' · '}<a href={s.url} rel="me noopener" target="_blank">{s.label}</a></>)}</p>
+    : <p>Follow {SITE.maker} wherever you found this link: new issues land there first.</p>}
+</div>
