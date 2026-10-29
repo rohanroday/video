@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { buildPrompt, kb, type VoiceMode } from '../lib/buildPrompt';
+import { buildPrompt, kb, type AiVoice, type VoiceMode } from '../lib/buildPrompt';
 import TitleCard from './TitleCard';
 
 interface Props { styleId: string; styleName: string; showCard?: boolean }
@@ -16,6 +16,7 @@ export default function PromptBuilder({ styleId, styleName, showCard = true }: P
   const [failed, setFailed] = useState(false);
   const [topic, setTopic] = useState('');
   const [mode, setMode] = useState<VoiceMode>('none');
+  const [ai, setAi] = useState<AiVoice>('female');
   const [status, setStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const [pulls, setPulls] = useState(0); // each copy pulls a fresh print
 
@@ -26,10 +27,14 @@ export default function PromptBuilder({ styleId, styleName, showCard = true }: P
       .catch(() => setFailed(true));
   }, [styleId]);
 
-  const prompt = useMemo(() => (files ? buildPrompt(files.rules, files.reference, topic, mode) : ''), [files, topic, mode]);
+  const prompt = useMemo(() => (files ? buildPrompt(files.rules, files.reference, topic, mode, ai) : ''), [files, topic, mode, ai]);
   // reset "Copied" in the handlers, not in an effect: an effect runs after paint and can wipe a copy made right after a change
   const changeTopic = (t: string) => { setTopic(t); setStatus('idle'); };
   const changeMode = (m: VoiceMode) => { setMode(m); setStatus('idle'); };
+  const changeAi = (v: AiVoice) => { setAi(v); setStatus('idle'); };
+  const voiceNote = mode === 'none' ? 'Full mix: music and sound effects, and Claude sets the timing.'
+    : mode === 'voiceover' ? 'Every word lands as you say it, with the effects under your voice. Attach your recording in Claude.'
+    : 'Claude writes a script for your OK, then the video narrates it with a natural AI voice, timed to the words. With Claude Code it can also save the voice into the MP4.';
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(prompt); setStatus('copied'); setPulls((n) => n + 1); } catch { setStatus('error'); }
@@ -51,9 +56,16 @@ export default function PromptBuilder({ styleId, styleName, showCard = true }: P
           <legend class="field-label">Voiceover</legend>
           <div class="toggle">
             <button type="button" class="btn paper" aria-pressed={mode === 'none'} onClick={() => changeMode('none')}>No voiceover</button>
-            <button type="button" class="btn paper" aria-pressed={mode === 'voiceover'} onClick={() => changeMode('voiceover')}>With voiceover</button>
+            <button type="button" class="btn paper" aria-pressed={mode === 'ai'} onClick={() => changeMode('ai')}>AI voice</button>
+            <button type="button" class="btn paper" aria-pressed={mode === 'voiceover'} onClick={() => changeMode('voiceover')}>My own voiceover</button>
           </div>
-          <p class="small soft">{mode === 'none' ? 'Full mix: music and sound effects, and Claude sets the timing.' : 'Every word lands as it is spoken, with the effects under your voice. Attach your audio in Claude.'}</p>
+          {mode === 'ai' && (
+            <div class="toggle sub" role="group" aria-label="AI voice">
+              <button type="button" class="btn paper" aria-pressed={ai === 'female'} onClick={() => changeAi('female')}>Female voice</button>
+              <button type="button" class="btn paper" aria-pressed={ai === 'male'} onClick={() => changeAi('male')}>Male voice</button>
+            </div>
+          )}
+          <p class="small soft">{voiceNote}</p>
         </fieldset>
         <div class="actions">
           <button type="button" class="btn" disabled={!files} onClick={copy}><CopyIcon />{status === 'copied' ? 'Copied' : `Copy the ${styleName} prompt`}</button>

@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "src/lib/buildPrompt.ts"
+        ],
+        "createdAt": "2026-10-29T15:09:52.540Z",
+        "reason": "Claude: the <img> text is inside prompt strings telling Claude not to reference missing images; no image tag ships from this file"
+      }
+    ]
+  }
+}

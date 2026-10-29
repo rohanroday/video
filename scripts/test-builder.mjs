@@ -30,7 +30,7 @@ try {
   await page.waitForFunction(() => [...document.querySelectorAll('.builder button')].some((b) => b.textContent.includes('Copy') && !b.disabled), { timeout: 15000 });
   const topic = 'How to brew pour-over coffee\n- grind medium-fine\n- 1:16 ratio, cost $3';
   await page.type('.builder textarea', topic);
-  await page.evaluate(() => [...document.querySelectorAll('.builder button')].find((b) => b.textContent === 'With voiceover').click());
+  await page.evaluate(() => [...document.querySelectorAll('.builder button')].find((b) => b.textContent === 'My own voiceover').click());
   await page.evaluate(() => [...document.querySelectorAll('.builder button')].find((b) => b.textContent.startsWith('Copy')).click());
   await page.waitForFunction(() => window.__copied && document.querySelector('.builder [aria-live]').textContent.startsWith('Copied'), { timeout: 5000 }).catch(() => {});
   const text = await page.evaluate(() => window.__copied || '');
@@ -43,6 +43,19 @@ try {
   check(/Copied \d+ KB/.test(status), `status says: ${status}`);
   const card = await page.$eval('.title-card', (c) => c.getAttribute('aria-label'));
   check(card.includes('How to brew pour-over coffee'), 'title card shows the first line of the topic');
+  check(text.includes('BUILD NOTES') && text.includes('one <canvas> per beat'), 'storyboard stills are drawn live, not image files');
+
+  // AI voice path: pick AI voice, then the male voice, and copy again
+  const click = (label) => page.evaluate((l) => [...document.querySelectorAll('.builder button')].find((b) => b.textContent === l).click(), label);
+  await click('AI voice');
+  await page.waitForFunction(() => [...document.querySelectorAll('.builder button')].some((b) => b.textContent === 'Male voice'));
+  await click('Male voice');
+  await page.evaluate(() => { window.__copied = null; });
+  await page.evaluate(() => [...document.querySelectorAll('.builder button')].find((b) => b.textContent.includes('Copy')).click());
+  await page.waitForFunction(() => window.__copied);
+  const ai = await page.evaluate(() => window.__copied);
+  check(ai.includes('AI voice, male') && ai.includes('speechSynthesis') && ai.includes('am_michael'), 'AI voice prompt asks for a male text-to-speech narration');
+  check(!ai.includes('I have a voiceover'), 'AI voice prompt replaces the own-recording text');
 
   // make-your-own builder
   await page.goto(`${BASE}/make-your-own/`, { waitUntil: 'networkidle0' });

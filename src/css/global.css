@@ -103,6 +103,10 @@ p { margin: 0; text-wrap: pretty; }
 .field textarea:focus, .field input:focus { background: #fff; outline: none; box-shadow: 0 0 0 3px var(--blue); }
 .toggle { display: flex; flex-wrap: wrap; gap: 8px; }
 .toggle .btn { min-height: 44px; }
+.toggle:not(.sub) { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.toggle:not(.sub) .btn { padding: 0 12px; white-space: nowrap; }
+.toggle.sub { padding-left: 14px; border-left: 2px solid var(--pink); }
+.toggle.sub .btn { min-height: 40px; padding: 0 16px; font-size: var(--t-small); }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .status { font-size: var(--t-small); color: var(--ink-soft); min-height: 2.6em; }
 .builder-card { margin: 0; }
