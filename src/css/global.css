@@ -23,6 +23,8 @@
   --t-giant: clamp(96px, 28.5vw, 520px);
 
   --m: clamp(16px, 2.6vw, 40px);
+  /* side padding that also centres content at 1440px on wide screens; ink fields stay full-bleed */
+  --pad: max(var(--m), calc((100vw - 1440px) / 2));
   --gap-section: clamp(96px, 11vw, 176px);
   --ease: cubic-bezier(.16, 1, .3, 1);
   --shadow-print: 0 1px 1px rgba(26, 26, 26, .12), 0 10px 24px -8px rgba(26, 26, 26, .28);
@@ -49,7 +51,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 800; font-stretch: 75%; l
 h2 { font-size: var(--t-h2); }
 h3 { font-size: var(--t-h3); line-height: 1; }
 p { margin: 0; text-wrap: pretty; }
-.wrap { padding-inline: var(--m); }
+.wrap { padding-inline: var(--pad); }
 .small { font-size: var(--t-small); }
 .soft { color: var(--ink-soft); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -72,7 +74,7 @@ p { margin: 0; text-wrap: pretty; }
 .btn:disabled { opacity: .55; cursor: progress; transform: none; }
 
 /* masthead */
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 18px var(--m); position: relative; z-index: 5; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 18px var(--pad); position: relative; z-index: 5; }
 .wordmark { font: 800 26px/1 var(--display); font-stretch: 75%; letter-spacing: .01em; text-transform: uppercase; text-decoration: none; }
 .bar nav { display: flex; align-items: center; gap: 26px; font-size: var(--t-small); font-weight: 600; }
 .bar nav a:not(.btn) { text-decoration: none; }
@@ -82,7 +84,7 @@ p { margin: 0; text-wrap: pretty; }
 @media (max-width: 480px) { .bar nav .hide-xs { display: none; } }
 
 /* colophon footer */
-.foot { margin-top: var(--gap-section); background: var(--ink); color: var(--paper); padding: 56px var(--m) 32px; display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 32px; font-size: var(--t-small); }
+.foot { margin-top: var(--gap-section); background: var(--ink); color: var(--paper); padding: 56px var(--pad) 32px; display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 32px; font-size: var(--t-small); }
 .foot .colophon-name { font: 800 clamp(64px, 12vw, 200px)/.82 var(--display); font-stretch: 75%; text-transform: uppercase; grid-column: 1 / -1; color: var(--paper); }
 .foot .colophon-name span { color: var(--pink); }
 .foot a { color: var(--paper); text-decoration-color: var(--pink); }
@@ -116,7 +118,7 @@ p { margin: 0; text-wrap: pretty; }
 @keyframes pull { 0% { clip-path: inset(0 0 100% 0); opacity: 1; transform: translateY(-8px) rotate(0); } 60% { clip-path: inset(0 0 0 0); transform: translateY(4px) rotate(-1.5deg); } 100% { clip-path: inset(0 0 0 0); opacity: 1; transform: translateY(0) rotate(-1deg); } }
 
 /* text pages: every page is a printed issue, its head on the yellow drum */
-.page-head { background-color: var(--yellow); margin-top: -2px; padding: clamp(32px, 6vh, 72px) var(--m) clamp(48px, 8vh, 88px); }
+.page-head { background-color: var(--yellow); margin-top: -2px; padding: clamp(32px, 6vh, 72px) var(--pad) clamp(48px, 8vh, 88px); }
 .page-head h1 { font-size: clamp(72px, 13vw, 210px); line-height: .82; --echo: var(--pink); }
 .page-head p { margin-top: 28px; font: 700 var(--t-h3)/1.25 var(--display); font-stretch: 90%; max-width: 30ch; }
 .prose { display: grid; grid-template-columns: 4fr 8fr; column-gap: 40px; row-gap: 0; margin-top: var(--gap-section); }

@@ -4,10 +4,11 @@ import { STYLES, frameUrl } from '../data/styles';
 import { SITE } from '../lib/site';
 import Follow from '../components/Follow.astro';
 
-const style = STYLES[0];
-const issueNo = String(style.issue).padStart(2, '0');
+const no = (n: number) => String(n).padStart(2, '0');
+const latest = STYLES[STYLES.length - 1];
+const nextIssue = no(latest.issue + 1);
 const steps = [
-  { title: 'Pick an issue', text: `Each issue is one animation style, printed with its sample. Issue ${issueNo} is ${style.name}.`, frame: 4 },
+  { title: 'Pick an issue', text: 'Each issue is one animation style, printed with its sample video and every frame.', frame: 4 },
   { title: 'Write your topic', text: 'A topic, a few bullet points or your whole script. Add your own voiceover if you have one.', frame: 6 },
   { title: 'Copy one prompt', text: 'One button copies the style rules, your topic and the full animation code.', frame: 13 },
   { title: 'Paste it into Claude', text: 'Claude sketches a storyboard, you approve it, then it draws every frame with its sound.', frame: 23 },
@@ -19,52 +20,61 @@ const faq = [
   ['How do I get an MP4?', 'In a Claude chat the animation plays in your browser, sound included. To save it as an MP4, run the same prompt in Claude Code: the prompt carries the render steps.'],
   ['Can I use my own voiceover?', 'Yes. Choose "With voiceover" before you copy, then attach your recording in Claude. Every word on screen is timed to when you say it.'],
   ['Can I post the videos, even for clients?', 'Yes. What you make is yours. Please don\'t resell or republish the prompts themselves as a pack.'],
-  ['Does it work in other languages?', 'Write your topic in any language. The Paper Cut fonts cover Latin scripts; for others, ask Claude to switch to a font that supports yours.'],
+  ['Does it work in other languages?', 'Write your topic in any language. If a style\'s fonts don\'t cover your script, ask Claude to switch to one that does.'],
   ['Is what I type sent anywhere?', 'No. The prompt is put together in your browser, and your topic never reaches a server.'],
   ['Can I make my own style?', 'Yes. "Make your own" turns one to three screenshots of a look you like into a new style.'],
 ];
 ---
 <Base>
-  <!-- first viewport: one ink owns the whole print -->
+  <!-- first viewport: one ink owns the whole print, sized to the window's height as well as its width -->
   <section class="cover halftone" aria-labelledby="cover-title">
     <h1 id="cover-title" class="cover-title"><span class="over" data-echo={SITE.name}>{SITE.name}</span><span class="visually-hidden">: animation styles for Claude</span></h1>
     <div class="cover-body">
-      <figure class="print" data-feed>
+      <figure class="print">
         <span class="staple s1" aria-hidden="true"></span><span class="staple s2" aria-hidden="true"></span>
-        <video src={`/styles/${style.id}/media/sample.mp4`} poster={`/styles/${style.id}/media/poster.jpg`} width="1280" height="720" autoplay muted loop playsinline aria-label={`${style.name} sample, made from one prompt`}></video>
-        <figcaption><span>Issue {issueNo} · {style.name}</span><span>made from one prompt</span></figcaption>
+        <video src={`/styles/${latest.id}/media/sample.mp4`} poster={`/styles/${latest.id}/media/poster.jpg`} width="1280" height="720" autoplay muted loop playsinline aria-label={`${latest.name} sample, made from one prompt`}></video>
+        <figcaption><span>Issue {no(latest.issue)} · {latest.name}</span><span>made from one prompt</span></figcaption>
       </figure>
       <div class="offer">
         <p class="offer-line">Animation styles for Claude. One prompt, one video, sound included. <strong>Free.</strong></p>
         <div class="offer-act">
-          <a class="btn" href={`/styles/${style.id}#prompt`}>Get Issue {issueNo}: {style.name}</a>
+          <a class="btn" href="#issues">Browse the issues</a>
           <a class="offer-link" href="#how">How it works</a>
         </div>
       </div>
     </div>
     <ol class="issue-strip" aria-label="Issues">
-      <li><b>Issue {issueNo}</b> {style.name} <span>out now</span></li>
-      <li class="next"><b>Issue 02</b> <span>next month</span></li>
+      {STYLES.map((s) => <li><a href={`/styles/${s.id}`}><b>Issue {no(s.issue)}</b> {s.name}</a> <span>out now</span></li>)}
+      <li class="next"><b>Issue {nextIssue}</b> <span>on the press</span></li>
     </ol>
   </section>
 
-  <!-- Issue 01 as an open zine spread -->
-  <section id="issues" class="spread wrap" aria-labelledby="issue-title">
-    <div class="spread-page left" data-feed>
-      <img src={frameUrl(style, 29)} width="960" height="540" alt={`${style.name}: the closing frame, "Small steps. Big days." with a rubber stamp`} loading="lazy" />
-      <img src={frameUrl(style, 23)} width="960" height="540" alt={`${style.name}: a paper clock sweeping ten minutes`} loading="lazy" class="tuck" />
+  <!-- the shelf: one card per issue; it grows as new styles are printed -->
+  <section id="issues" class="shelf wrap" aria-labelledby="issues-title">
+    <div class="shelf-head">
+      <h2 id="issues-title" data-feed>The issues</h2>
+      <p data-feed style="--i:1">Every issue is one original animation style. Open one, write your topic, and copy its prompt.</p>
     </div>
-    <div class="spread-page right" data-feed style="--i:1">
-      <h2 id="issue-title"><span class="over" data-echo={style.name} style={`--echo:${style.inks.echo}`}>{style.name}</span></h2>
-      <p class="spread-lede">{style.tagline}</p>
-      <p>{style.howItExplains}</p>
-      <ul class="spread-facts small">
-        <li><b>Issue {issueNo}</b> out now; Issue 02 next month</li>
-        <li><b>Good for</b> {style.bestFor.join(', ')}</li>
-        <li><b>Sound</b> kalimba bed and paper effects, synthesized in code</li>
-      </ul>
-      <a class="btn" href={`/styles/${style.id}#prompt`}>Get Issue {issueNo}</a>
-    </div>
+    <ul class="shelf-grid">
+      {STYLES.map((s, i) => (
+        <li class="zine" style={`--field:${s.inks.field}; --echo:${s.inks.echo}`} data-feed>
+          <a class="zine-link" href={`/styles/${s.id}`} aria-labelledby={`zine-${s.id}`}>
+            <span class="zine-cover halftone">
+              <img src={`/styles/${s.id}/media/poster.jpg`} width="1280" height="720" alt="" loading={i < 3 ? 'eager' : 'lazy'} />
+            </span>
+            <span class="zine-title" id={`zine-${s.id}`}><span class="zine-no">{no(s.issue)}</span> {s.name}</span>
+            <span class="zine-tag">{s.tagline}</span>
+            <span class="zine-meta small">{s.family} · {s.bestFor.slice(0, 2).join(', ')}</span>
+          </a>
+        </li>
+      ))}
+      <li class="zine next" data-feed>
+        <div class="zine-cover blank" aria-hidden="true"><span>{nextIssue}</span></div>
+        <p class="zine-title"><span class="zine-no">{nextIssue}</span> On the press</p>
+        <p class="zine-tag">A new original style lands every month.</p>
+        <Follow lead={`Follow for Issue ${nextIssue}`} />
+      </li>
+    </ul>
   </section>
 
   <!-- how it works: the print run, in order -->
@@ -73,23 +83,12 @@ const faq = [
     <ol class="run-steps">
       {steps.map((s, i) => (
         <li data-feed style={`--i:${i}`}>
-          <img src={frameUrl(style, s.frame)} width="960" height="540" alt="" loading="lazy" />
+          <img src={frameUrl(latest, s.frame)} width="960" height="540" alt="" loading="lazy" />
           <h3>{s.title}</h3>
           <p>{s.text}</p>
         </li>
       ))}
     </ol>
-  </section>
-
-  <!-- every frame, printed on the yellow drum -->
-  <section class="sheet halftone" aria-labelledby="sheet-title">
-    <div class="sheet-head wrap">
-      <h2 id="sheet-title" data-feed>Every frame</h2>
-      <p class="sheet-note" data-feed style="--i:1">All {style.frames} frames of Issue {issueNo}, straight off the press. Each one was drawn in code, not edited.</p>
-    </div>
-    <div class="sheet-grid wrap">
-      {Array.from({ length: style.frames }, (_, i) => <img src={frameUrl(style, i)} width="960" height="540" alt="" loading="lazy" />)}
-    </div>
   </section>
 
   <!-- questions, set as the zine's colophon -->
@@ -104,59 +103,76 @@ const faq = [
     <div class="close-print halftone" data-feed>
       <h2 id="close-title"><span class="over" data-echo="One prompt." style="--echo:var(--yellow)">One prompt.</span><br />One video.</h2>
       <div class="close-act">
-        <p>Issue 02 is on the press. Take Issue {issueNo} today.</p>
-        <a class="btn" href={`/styles/${style.id}#prompt`}>Get Issue {issueNo}: {style.name}</a>
-        <Follow />
+        <p>Issue {nextIssue} is on the press. Take Issue {no(latest.issue)} today.</p>
+        <a class="btn" href={`/styles/${latest.id}#prompt`}>Get Issue {no(latest.issue)}: {latest.name}</a>
+        <Follow lead={`Follow for Issue ${nextIssue}`} />
       </div>
     </div>
   </section>
 </Base>
 
 <style>
-  /* cover */
-  .cover { background-color: var(--pink); margin-top: -2px; padding: 0 var(--m) 0; min-height: calc(100svh - 80px); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; }
-  .cover-title { font-size: var(--t-giant); line-height: .78; color: var(--blue); letter-spacing: -0.015em; margin: clamp(8px, 2vh, 24px) 0 0 -0.04em; mix-blend-mode: multiply; }
+  /* cover: title, print and offer all inside one window, whatever its height */
+  .cover {
+    --fs: clamp(64px, min(24vw, 25svh), 380px);
+    background-color: var(--pink); margin-top: -2px; padding: 0 var(--pad);
+    min-height: calc(100svh - 76px); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden;
+  }
+  .cover-title { font-size: var(--fs); line-height: .78; color: var(--blue); letter-spacing: -0.015em; margin: clamp(6px, 1.6svh, 20px) 0 0 -0.04em; mix-blend-mode: multiply; }
   .cover-title .over { --echo: var(--yellow); }
-  .cover-body { display: grid; grid-template-columns: 7fr 5fr; gap: clamp(24px, 4vw, 64px); align-items: center; padding-block: clamp(20px, 3vh, 40px); }
-  .print { margin: 0; background: #fbf8f1; padding: 12px 12px 0; box-shadow: var(--shadow-print); transform: rotate(-1.5deg); position: relative; }
-  .print video { width: 100%; height: auto; aspect-ratio: 16 / 9; background: var(--paper-2); }
-  .print figcaption { display: flex; justify-content: space-between; gap: 12px; padding: 10px 2px 12px; font-size: var(--t-small); font-weight: 600; }
+  .cover-body { display: grid; grid-template-columns: auto minmax(260px, 1fr); gap: clamp(24px, 4vw, 64px); align-items: center; padding-block: clamp(14px, 2.4svh, 32px); min-height: 0; }
+  /* the print is as wide as the leftover height allows (16:9 plus its caption), never wider than 60% of the page */
+  .print { margin: 0; background: #fbf8f1; padding: 10px 10px 0; box-shadow: var(--shadow-print); transform: rotate(-1.2deg); position: relative;
+    width: clamp(280px, calc((100svh - 76px - var(--fs) * .8 - 48px - 120px) * 1.62), 60vw); }
+  .print video { width: 100%; aspect-ratio: 16 / 9; background: var(--paper-2); }
+  .print figcaption { display: flex; justify-content: space-between; gap: 12px; padding: 8px 2px 10px; font-size: var(--t-small); font-weight: 600; }
   .print figcaption span:last-child { color: var(--pink-deep); }
-  .offer { display: grid; gap: 28px; }
-  .offer-line { font: 700 clamp(26px, 2.6vw, 40px)/1.12 var(--display); font-stretch: 85%; color: var(--ink); max-width: 18ch; }
+  .print { container-type: inline-size; }
+  @container (max-width: 440px) { .print figcaption span:last-child { display: none; } } /* a small print keeps one caption line */
+  .offer { display: grid; gap: clamp(16px, 2.6svh, 28px); }
+  .offer-line { font: 700 clamp(24px, min(2.6vw, 4.2svh), 44px)/1.12 var(--display); font-stretch: 85%; color: var(--ink); max-width: 18ch; }
   .offer-line strong { color: var(--paper); background: var(--ink); padding: 0 .15em; font-weight: 800; }
   .offer-act { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
   .offer-link { font-weight: 700; text-decoration-color: var(--ink); }
+  .issue-strip { list-style: none; margin: 0 calc(var(--pad) * -1); padding: 12px var(--pad); display: flex; flex-wrap: wrap; gap: 8px 40px; background: var(--ink); color: var(--paper); font-size: var(--t-small); }
   .issue-strip li { white-space: nowrap; }
-  .issue-strip { list-style: none; margin: 0 calc(var(--m) * -1); padding: 14px var(--m); display: flex; flex-wrap: wrap; gap: 8px 40px; background: var(--ink); color: var(--paper); font-size: var(--t-small); }
+  .issue-strip a { text-decoration: none; }
+  .issue-strip a:hover { text-decoration: underline; }
   .issue-strip b { font-family: var(--display); font-stretch: 80%; text-transform: uppercase; font-size: 18px; margin-right: 8px; }
   .issue-strip li span { color: var(--yellow); margin-left: 8px; }
-  .issue-strip .next { color: #b8b1a4; }
-  .issue-strip .next span { color: #b8b1a4; }
+  .issue-strip .next, .issue-strip .next span { color: #b8b1a4; }
   @media (max-width: 900px) {
-    .cover { min-height: 0; }
+    .cover { --fs: clamp(64px, 24vw, 200px); min-height: 0; }
     .cover-body { grid-template-columns: 1fr; }
-    .print { transform: rotate(-1deg); }
+    .print { width: 100%; transform: rotate(-1deg); }
   }
 
-  /* spread */
-  .spread { display: grid; grid-template-columns: 1fr 1fr; margin-top: var(--gap-section); background: #fbf8f1; box-shadow: var(--shadow-print); margin-inline: var(--m); padding: 0; position: relative; }
-  .spread::after { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: linear-gradient(rgba(26,26,26,.18), rgba(26,26,26,.05)); }
-  .spread-page { padding: clamp(28px, 4vw, 64px); position: relative; }
-  .spread-page.left { display: grid; gap: 0; align-content: center; }
-  .spread-page.left img { width: 100%; height: auto; }
-  .spread-page.left .tuck { width: 62%; margin: -14% 0 0 auto; box-shadow: var(--shadow-print); border: 8px solid #fbf8f1; transform: rotate(2deg); }
-  .spread h2 { margin: 0 0 22px; font-size: clamp(64px, 8vw, 140px); line-height: .82; }
-  .spread-lede { font: 700 var(--t-h3)/1.2 var(--display); font-stretch: 90%; margin-bottom: 16px; }
-  .spread-page.right > p:not(.issue-no):not(.spread-lede) { max-width: 52ch; }
-  .spread-facts { list-style: none; padding: 0; margin: 22px 0 30px; display: grid; gap: 6px; }
-  .spread-facts b { font-weight: 700; margin-right: 6px; }
-  @media (max-width: 900px) { .spread { grid-template-columns: 1fr; } .spread::after { display: none; } }
+  /* shelf of issues: one card each, columns fill as issues are added */
+  .shelf { margin-top: var(--gap-section); }
+  .shelf-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px 40px; margin-bottom: clamp(32px, 4vw, 56px); }
+  .shelf-head p { max-width: 38ch; font: 700 var(--t-h3)/1.25 var(--display); font-stretch: 90%; }
+  .shelf-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: clamp(24px, 3vw, 44px); }
+  .shelf-grid:has(> li:nth-child(3)) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+  .zine { display: grid; align-content: start; }
+  .zine-link { display: grid; gap: 10px; text-decoration: none; color: inherit; }
+  .zine-cover { display: block; background-color: var(--field); padding: clamp(14px, 2vw, 26px); box-shadow: var(--shadow-print); margin-bottom: 8px; transition: transform .35s var(--ease), box-shadow .35s var(--ease); }
+  .zine-cover img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border: 8px solid #fbf8f1; transform: rotate(-1.5deg); transition: transform .35s var(--ease); }
+  .zine-link:hover .zine-cover { transform: translateY(-4px) rotate(-.6deg); box-shadow: 0 2px 2px rgba(26,26,26,.12), 0 22px 34px -12px rgba(26,26,26,.35); }
+  .zine-link:hover .zine-cover img { transform: rotate(0deg); }
+  .zine-link:focus-visible { outline-offset: 6px; }
+  .zine-title { font: 800 clamp(34px, 3.2vw, 52px)/.9 var(--display); font-stretch: 75%; text-transform: uppercase; margin: 0; }
+  .zine-no { color: var(--echo, var(--pink-deep)); margin-right: .12em; }
+  .zine-tag { font: 700 var(--t-h3)/1.2 var(--display); font-stretch: 90%; margin: 0; }
+  .zine-meta { color: var(--ink-soft); }
+  .zine.next .zine-cover.blank { aspect-ratio: auto; display: grid; place-items: center; min-height: 0; background: transparent; box-shadow: none; outline: 3px dashed rgba(26,26,26,.28); outline-offset: -3px; }
+  .zine.next .zine-cover.blank::before { content: ''; display: block; width: 100%; aspect-ratio: 16 / 9; grid-area: 1 / 1; }
+  .zine.next .zine-cover.blank span { grid-area: 1 / 1; font: 800 clamp(80px, 9vw, 150px)/1 var(--display); font-stretch: 75%; color: var(--pink); mix-blend-mode: multiply; opacity: .55; }
+  .zine.next .zine-title, .zine.next .zine-tag { color: var(--ink-soft); }
+  .zine.next .follow { margin-top: 10px; }
 
   /* print run */
   .run { margin-top: var(--gap-section); }
-  .run h2 { max-width: 10ch; }
-  .run-steps { list-style: none; margin: 48px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(16px, 2vw, 28px); counter-reset: run; }
+  .run-steps { list-style: none; margin: clamp(32px, 4vw, 48px) 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(16px, 2vw, 28px); counter-reset: run; }
   .run-steps li { counter-increment: run; position: relative; padding-top: 64px; }
   .run-steps li::before { content: counter(run); position: absolute; top: 0; left: 0; font: 800 64px/1 var(--display); font-stretch: 75%; color: var(--pink); mix-blend-mode: multiply; }
   .run-steps img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; box-shadow: var(--shadow-print); border: 8px solid #fbf8f1; margin-bottom: 18px; }
@@ -166,15 +182,6 @@ const faq = [
   .run-steps p { color: var(--ink-soft); }
   @media (max-width: 1000px) { .run-steps { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 560px) { .run-steps { grid-template-columns: 1fr; } }
-
-  /* contact sheet on the yellow drum */
-  .sheet { background-color: var(--yellow); margin-top: var(--gap-section); padding-block: clamp(56px, 7vw, 104px); }
-  .sheet-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 36px; }
-  .sheet-note { max-width: 36ch; font-weight: 600; }
-  .sheet-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-  .sheet-grid img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
-  .sheet-grid img:hover { transform: scale(1.08) rotate(-1deg); position: relative; z-index: 2; box-shadow: var(--shadow-print); }
-  @media (max-width: 760px) { .sheet-grid { grid-template-columns: repeat(3, 1fr); } }
 
   /* colophon questions */
   .faq { display: grid; grid-template-columns: 4fr 8fr; gap: 40px; margin-top: var(--gap-section); }
@@ -186,9 +193,9 @@ const faq = [
   /* close */
   .close { margin-top: var(--gap-section); }
   .close-print { background-color: var(--pink); padding: clamp(36px, 6vw, 88px); display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: end; box-shadow: var(--shadow-print); }
-  .close-print h2 { font-size: clamp(64px, 9vw, 160px); line-height: .82; color: var(--blue); mix-blend-mode: multiply; }
+  .close-print h2 { font-size: clamp(64px, 8vw, 150px); line-height: .82; color: var(--blue); mix-blend-mode: multiply; }
   .close-act { display: grid; gap: 22px; justify-items: start; }
-  .close-act a:not(.btn) { font-weight: 700; text-decoration-color: var(--ink); } /* pink underline vanishes on the pink field */
   .close-act p { font: 700 var(--t-h3)/1.2 var(--display); font-stretch: 90%; }
+  .close-act a:not(.btn) { font-weight: 700; text-decoration-color: var(--ink); } /* pink underline vanishes on the pink field */
   @media (max-width: 900px) { .close-print { grid-template-columns: 1fr; } }
 </style>
